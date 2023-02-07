@@ -40,6 +40,7 @@ if __name__ == "__main__":
     maybe_mkdir_p(join(out_folder, "imagesTr"))
     maybe_mkdir_p(join(out_folder, "imagesTs"))
     maybe_mkdir_p(join(out_folder, "labelsTr"))
+    maybe_mkdir_p(join(out_folder, "labelsTs"))
 
     # train
     all_train_files = []
@@ -64,7 +65,7 @@ if __name__ == "__main__":
             patient_identifier = d.split("/")[-1][:-7]
             all_test_files.append(patient_identifier + "_0000.nii.gz")
             shutil.copy(d, join(out_folder, "imagesTs", patient_identifier + "_0000.nii.gz"))
-            shutil.copy(s, join(out_folder, "labelsTr", patient_identifier + ".nii.gz"))
+            shutil.copy(s, join(out_folder, "labelsTs", patient_identifier + ".nii.gz"))
 
 
     json_dict = OrderedDict()
@@ -85,9 +86,12 @@ if __name__ == "__main__":
     }
     json_dict['numTraining'] = len(all_train_files)
     json_dict['numTest'] = len(all_test_files)
-    json_dict['training'] = [{'image': "./imagesTr/%s.nii.gz" % i.split("/")[-1][:-12], "label": "./labelsTr/%s.nii.gz" % i.split("/")[-1][:-12]} for i in
+    json_dict['training'] = [{'image': "./imagesTr/%s.nii.gz" % i.split("/")[-1][:-12],
+                                "label": "./labelsTr/%s.nii.gz" % i.split("/")[-1][:-12]} for i in
                              all_train_files]
-    json_dict['test'] = ["./imagesTs/%s.nii.gz" % i.split("/")[-1][:-12] for i in all_test_files]
+    json_dict['test'] = [{'image': "./imagesTs/%s.nii.gz" % i.split("/")[-1][:-12],
+                            "label": "./labelsTs/%s.nii.gz" % i.split("/")[-1][:-12]} for i in
+                             all_test_files]
 
     save_json(json_dict, os.path.join(out_folder, "dataset.json"))
 
