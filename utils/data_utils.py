@@ -11,12 +11,12 @@ def get_loader(args):
         ]
     )
     
-    test_transform = transforms.Compose(
+    val_transform = transforms.Compose(
         [
             transforms.LoadImaged(keys=["image", "label"]),
         ]
     )
-    if args.test_mode:
+    if args.predict_mode:
         pass
     else:
         datalist = load_decathlon_datalist(datalist_json, True, "training", base_dir=data_dir)
@@ -33,3 +33,10 @@ def get_loader(args):
             num_workers=args.workers,
             pin_memory=True,
         )
+        val_files = load_decathlon_datalist(datalist_json, True, "test", base_dir=data_dir)
+        val_ds = data.Dataset(data=val_files, transform=val_transform)
+        val_loader = data.DataLoader(
+            val_ds, batch_size=1, shuffle=False, num_workers=args.workers, pin_memory=True
+        )
+        loader = [train_loader, val_loader]
+    return loader

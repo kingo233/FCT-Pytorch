@@ -9,7 +9,7 @@ def parse_args():
     parser.add_argument('--random_seed',default=0,type=int,help='random seed,default 0')
     parser.add_argument('--checkpoint', default='./output_model', type=str, help='checkpoint model')
     parser.add_argument('--data_dir',default='Task027_ACDC')
-    parser.add_argument('--test_mode',default=False,help='Train or Predict')
+    parser.add_argument('--predict_mode',default=False,help='Train or Predict')
     parser.add_argument("--use_normal_dataset", action="store_true", help="use monai Dataset class")
     parser.add_argument("--workers", default=4, type=int, help="number of workers")
     
