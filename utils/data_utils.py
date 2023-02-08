@@ -8,6 +8,7 @@ def get_loader(args):
     train_transform = transforms.Compose(
         [
             transforms.LoadImaged(keys=["image", "label"]),
+            transforms.AddChanneld(keys=["image", "label"])
         ]
     )
     

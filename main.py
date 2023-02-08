@@ -147,3 +147,12 @@ def main():
 
     # get data
     loader = get_loader(args)
+    if len(loader) == 2:
+        train_loader,test_loader = loader
+    else:
+        pass
+    for idx,batch in enumerate(train_loader):
+        print(batch)
+
+if __name__ == '__main__':
+    main()
