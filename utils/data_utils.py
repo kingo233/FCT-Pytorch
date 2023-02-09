@@ -8,7 +8,11 @@ def get_loader(args):
     train_transform = transforms.Compose(
         [
             transforms.LoadImaged(keys=["image", "label"]),
-            transforms.AddChanneld(keys=["image", "label"])
+            transforms.AddChanneld(keys=["image", "label"]),
+            transforms.Orientationd(keys=["image", "label"], axcodes="RAS"),
+            transforms.Spacingd(keys=["image", "label"],pixdim=[1.5,1.5,10]),
+            transforms.NormalizeIntensityd(keys=["image", "label"]),
+            transforms.Resized(keys=['image', 'label'],spatial_size=[256,256,8],mode='trilinear')
         ]
     )
     

@@ -152,7 +152,7 @@ def main():
     else:
         pass
     for idx,batch in enumerate(train_loader):
-        print(batch)
+        print(batch['image'].shape)
 
 if __name__ == '__main__':
     main()
