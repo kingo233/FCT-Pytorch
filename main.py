@@ -11,6 +11,7 @@ from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
 from utils.args_utils import parse_args
 from utils.data_utils import get_loader
+from utils.model import FCT
 
 
 logging.config.fileConfig('./config/log_config.conf')
@@ -132,6 +133,16 @@ def load_checkpoint(path: str,
     else:
         return default_epoch
 
+def init_weights(m):
+    """
+    Initialize the weights
+    """
+    if isinstance(m, nn.Conv2d):
+        torch.nn.init.kaiming_normal(m.weight)
+        if m.bias is not None:
+            torch.nn.init.zeros_(m.bias)
+
+
 def main():
     # random seed
     setup_seed(args.random_seed)
@@ -145,14 +156,20 @@ def main():
     # tensorboard writer
     tb_writer = SummaryWriter(log_dir=os.path.join(args.checkpoint, 'runs'))
 
+    # model instatation
+    model = FCT(args).to(device)
+    model.apply(init_weights)
+
     # get data
     loader = get_loader(args)
     if len(loader) == 2:
         train_loader,test_loader = loader
     else:
         pass
-    for idx,batch in enumerate(train_loader):
-        print(batch['image'].shape)
+    
+    # initialize the loss function
+    loss_fn = nn.BCELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
 if __name__ == '__main__':
     main()
