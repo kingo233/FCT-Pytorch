@@ -11,13 +11,14 @@ from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
 from utils.args_utils import parse_args
 from utils.data_utils import get_loader
+from utils.model import FCT
 
 
 logging.config.fileConfig('./config/log_config.conf')
 logger = logging.getLogger('mylog')
 
 args = parse_args()
-begin_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+begin_time = datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
 assert torch.cuda.is_available() == True
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -37,6 +38,27 @@ def make_dir(args):
         os.makedirs(os.path.join(args.checkpoint, 'model'))
     if not os.path.exists(os.path.join(args.checkpoint, 'runs')):
         os.makedirs(os.path.join(args.checkpoint, 'runs'))
+
+
+def get_lr_scheduler(args,optimizer):
+    if args.lr_scheduler == 'none':
+        return None
+    if args.lr_scheduler == 'ReduceLROnPlateau':
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer,
+            mode='min',
+            factor=args.lr_factor,
+            verbose=True,
+            threshold=1e-6,
+            patience=10,
+            min_lr=args.min_lr)
+        return scheduler
+    if args.lr_scheduler == 'CosineAnnealingWarmRestarts':
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+            optimizer,
+            T_0=500
+        )
+        return scheduler
 
 def save_checkpoint(path: str,
                     epoch: int,
@@ -132,6 +154,16 @@ def load_checkpoint(path: str,
     else:
         return default_epoch
 
+def init_weights(m):
+    """
+    Initialize the weights
+    """
+    if isinstance(m, nn.Conv2d):
+        torch.nn.init.kaiming_normal_(m.weight)
+        if m.bias is not None:
+            torch.nn.init.zeros_(m.bias)
+
+
 def main():
     # random seed
     setup_seed(args.random_seed)
@@ -145,14 +177,43 @@ def main():
     # tensorboard writer
     tb_writer = SummaryWriter(log_dir=os.path.join(args.checkpoint, 'runs'))
 
+    # model instatation
+    model = FCT(args)
+    model.apply(init_weights)
+
     # get data
     loader = get_loader(args)
     if len(loader) == 2:
         train_loader,test_loader = loader
     else:
         pass
-    for idx,batch in enumerate(train_loader):
-        print(batch['image'].shape)
+    
+    # initialize the loss function
+    loss_fn = nn.BCELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr,weight_decay=args.decay)
+    scheduler = get_lr_scheduler(args,optimizer)
+    model.to(device)
+
+    # resume
+    # TODO
+    first_epoch = 0
+    if args.resume:
+        first_epoch = load_checkpoint('checkpoint', 0, model, optimizer)
+        for g in optimizer.param_groups:
+            g['lr'] = args.lr
+            g['weight_decay'] = args.decay
+
+    for epoch in range(first_epoch,args.max_epoch):
+        model.train()
+        optimizer.zero_grad()
+        # mini batch train
+        train_loss_list = []
+        grads_dict = {}
+        for i,batch in enumerate(train_loader):
+            train_x = batch['image'].to(device)
+            y = batch['image'].to(device)
+            pred_y = model(train_x)
+            loss = loss_fn(pred_y,y)
 
 if __name__ == '__main__':
     main()
