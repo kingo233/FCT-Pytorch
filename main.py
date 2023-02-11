@@ -6,11 +6,12 @@ import numpy as np
 import random
 import time
 import torch.nn as nn
+from torch.utils.data import DataLoader,TensorDataset
 from datetime import datetime
 
 from torch.utils.tensorboard import SummaryWriter
 from utils.args_utils import parse_args
-from utils.data_utils import get_loader
+from utils.data_utils import get_acdc,convert_masks
 from utils.model import FCT
 
 
@@ -182,12 +183,25 @@ def main():
     model.apply(init_weights)
 
     # get data
-    loader = get_loader(args)
-    if len(loader) == 2:
-        train_loader,test_loader = loader
-    else:
-        pass
-    
+    # training
+    acdc_data, _, _ = get_acdc('ACDC/training')
+    acdc_data[0] = np.transpose(acdc_data[0], (0, 3, 1, 2)) # for the channels
+    acdc_data[1] = np.transpose(acdc_data[1], (0, 3, 1, 2)) # for the channels
+    acdc_data[1] = convert_masks(acdc_data[1])
+    acdc_data[0] = torch.Tensor(acdc_data[0]) # convert to tensors
+    acdc_data[1] = torch.Tensor(acdc_data[1]) # convert to tensors
+    acdc_data = TensorDataset(acdc_data[0], acdc_data[1])
+    train_dataloader = DataLoader(acdc_data, batch_size=args.batch_size)
+    # validation
+    acdc_data, _, _ = get_acdc('ACDC/testing')
+    acdc_data[0] = np.transpose(acdc_data[0], (0, 3, 1, 2)) # for the channels
+    acdc_data[1] = np.transpose(acdc_data[1], (0, 3, 1, 2)) # for the channels
+    acdc_data[1] = convert_masks(acdc_data[1])
+    acdc_data[0] = torch.Tensor(acdc_data[0]) # convert to tensors
+    acdc_data[1] = torch.Tensor(acdc_data[1]) # convert to tensors
+    acdc_data = TensorDataset(acdc_data[0], acdc_data[1])
+    validation_dataloader = DataLoader(acdc_data, batch_size=args.batch_size)
+
     # initialize the loss function
     loss_fn = nn.BCELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr,weight_decay=args.decay)
@@ -209,11 +223,11 @@ def main():
         # mini batch train
         train_loss_list = []
         grads_dict = {}
-        for i,batch in enumerate(train_loader):
-            train_x = batch['image'].to(device)
-            y = batch['image'].to(device)
-            pred_y = model(train_x)
-            loss = loss_fn(pred_y,y)
+        # for i,batch in enumerate(train_loader):
+        #     train_x = batch['image'].to(device)
+        #     y = batch['image'].to(device)
+        #     pred_y = model(train_x)
+        #     loss = loss_fn(pred_y,y)
 
 if __name__ == '__main__':
     main()
