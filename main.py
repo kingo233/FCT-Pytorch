@@ -223,11 +223,17 @@ def main():
         # mini batch train
         train_loss_list = []
         grads_dict = {}
-        # for i,batch in enumerate(train_loader):
-        #     train_x = batch['image'].to(device)
-        #     y = batch['image'].to(device)
-        #     pred_y = model(train_x)
-        #     loss = loss_fn(pred_y,y)
+        for i,(x,y) in enumerate(train_dataloader):
+            x = x.to(device)
+            y = y.to(device)
+
+            pred_y = model(x)
+            # y[1,1,224,4]
+            # pred_y[2] [1,4,224,224]
+            loss = loss_fn(pred_y[2],y)
+            loss.backward()
+            optimizer.step()
+
 
 if __name__ == '__main__':
     main()

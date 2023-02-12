@@ -60,8 +60,6 @@ def get_acdc(path,input_size=(224,224,1)):
     info = []
     for root, directories, files in os.walk(path):
         for file in files:
-            with open(root +"/Info.cfg") as f:
-                lines = f.read().splitlines()
             if ".gz" and "frame" in file:
                 if "_gt" not in file:
                     img_path = root + "/" + file
@@ -71,7 +69,6 @@ def get_acdc(path,input_size=(224,224,1)):
                     for idx in range(img.shape[2]):
                         i = cv2.resize(img[:,:,idx], (input_size[0], input_size[1]), interpolation=cv2.INTER_NEAREST)
                         all_imgs.append(i)
-                        info.append(file[:10]+"_"+"ED") if int(file[16:18])==int(lines[0][3:]) else info.append(file[:10]+"_"+"ES")
                         
                 else:
                     img_path = root + "/" + file
