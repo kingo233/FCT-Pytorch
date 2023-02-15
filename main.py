@@ -6,6 +6,7 @@ import numpy as np
 import random
 import time
 import torch.nn as nn
+import sys
 from torch.utils.data import DataLoader,TensorDataset
 from datetime import datetime
 # from google.colab import drive
@@ -218,6 +219,7 @@ def main():
             g['lr'] = args.lr
             g['weight_decay'] = args.decay
 
+    min_loss = sys.maxsize
     for epoch in range(first_epoch,args.max_epoch):
         model.train()
         # mini batch train
