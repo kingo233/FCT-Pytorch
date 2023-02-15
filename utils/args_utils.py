@@ -23,6 +23,7 @@ def parse_args():
     parser.add_argument('--lr_scheduler',default='ReduceLROnPlateau')
     parser.add_argument('--resume',action='store_true')
 
+    parser.add_argument('--colab',action='store_true')
     # network parameters
     
 

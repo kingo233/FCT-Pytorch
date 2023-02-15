@@ -8,6 +8,7 @@ import time
 import torch.nn as nn
 from torch.utils.data import DataLoader,TensorDataset
 from datetime import datetime
+# from google.colab import drive
 
 from torch.utils.tensorboard import SummaryWriter
 from utils.args_utils import parse_args
@@ -276,10 +277,13 @@ def main():
             min_loss = validate_loss
             torch.save(model.state_dict(), f'{args.checkpoint}/model/model.pt')
             torch.jit.script(model).save(f'{args.checkpoint}/model/model_jit.pt')
+            if args.colab:
+                torch.save(model.state_dict(), f'/content/drive/Mydrive/model.pt')
+                torch.jit.script(model).save(f'/content/drive/Mydrive/model_jit.pt')
         
         # checkpoint 
         if epoch % 100 == 1:
-            save_checkpoint('checkpoint',epoch,model,optimizer)
+            save_checkpoint('/content/drive/Mydrive/checkpoint',epoch,model,optimizer)
 
 
 if __name__ == '__main__':
