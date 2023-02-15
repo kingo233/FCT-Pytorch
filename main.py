@@ -219,20 +219,67 @@ def main():
 
     for epoch in range(first_epoch,args.max_epoch):
         model.train()
-        optimizer.zero_grad()
         # mini batch train
         train_loss_list = []
         grads_dict = {}
+        abs_grads_dict = {}
         for i,(x,y) in enumerate(train_dataloader):
             x = x.to(device)
             y = y.to(device)
 
             pred_y = model(x)
-            # y[1,1,224,4]
-            # pred_y[2] [1,4,224,224]
             loss = loss_fn(pred_y[2],y)
+            train_loss_list.append(loss)
             loss.backward()
             optimizer.step()
+            for name, params in model.named_parameters():
+                if name not in grads_dict:
+                    grads_dict[name] = []
+                    abs_grads_dict[name] = []
+                grads_dict[name].append(params.grad.mean())
+                abs_grads_dict[name].append(params.grad.abs().mean())
+        
+        optimizer.zero_grad()
+        train_loss = torch.tensor(train_loss_list).mean()
+        if isinstance(scheduler,torch.optim.lr_scheduler.ReduceLROnPlateau):
+            scheduler.step(train_loss)
+        if isinstance(scheduler,torch.optim.lr_scheduler.CosineAnnealingWarmRestarts):
+            scheduler.step()
+        # validate
+        model.eval()
+        validate_loss_list = []
+        with torch.no_grad():
+            for i,(x,y) in enumerate(validation_dataloader):
+                x = x.to(device)
+                y = y.to(device)
+                pred_y = model(x)
+                loss = loss_fn(pred_y[2],y)
+                validate_loss_list.append(loss)
+        validate_loss = torch.tensor(validate_loss_list).mean()
+        # tensorboard
+        tb_writer.add_scalar('loss/train_loss', train_loss, epoch)
+        tb_writer.add_scalar('loss/validate_loss', validate_loss, epoch)
+        tb_writer.add_scalar(f'lr/{epoch // 100}', optimizer.param_groups[0]["lr"], epoch)
+        for name in grads_dict:
+            # 分段看
+            tb_writer.add_scalar(f'{name}/{epoch // 100}',torch.tensor(grads_dict[name]).mean(), epoch)
+            tb_writer.add_scalar(f'abs_{name}/{epoch // 100}',torch.tensor(abs_grads_dict[name]).mean(), epoch)
+        # log
+        logger.info('-' * 35)
+        logger.info(
+            f'epoch: {epoch},train loss:{train_loss:.6f},validate loss:{validate_loss:.6f}'
+        )
+        logger.info('-' * 35)
+
+        # model save
+        if validate_loss < min_loss:
+            min_loss = validate_loss
+            torch.save(model.state_dict(), f'{args.checkpoint}/model/model.pt')
+            torch.jit.script(model).save(f'{args.checkpoint}/model/model_jit.pt')
+        
+        # checkpoint 
+        if epoch % 100 == 1:
+            save_checkpoint('checkpoint',epoch,model,optimizer)
 
 
 if __name__ == '__main__':
