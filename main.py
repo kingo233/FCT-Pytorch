@@ -239,8 +239,9 @@ def main():
                 if name not in grads_dict:
                     grads_dict[name] = []
                     abs_grads_dict[name] = []
-                grads_dict[name].append(params.grad.mean())
-                abs_grads_dict[name].append(params.grad.abs().mean())
+                if params.grad is not None:
+                    grads_dict[name].append(params.grad.mean())
+                    abs_grads_dict[name].append(params.grad.abs().mean())
         
         optimizer.zero_grad()
         train_loss = torch.tensor(train_loss_list).mean()
@@ -278,10 +279,10 @@ def main():
         if validate_loss < min_loss:
             min_loss = validate_loss
             torch.save(model.state_dict(), f'{args.checkpoint}/model/model.pt')
-            torch.jit.script(model).save(f'{args.checkpoint}/model/model_jit.pt')
+            # torch.jit.script(model).save(f'{args.checkpoint}/model/model_jit.pt')
             if args.colab:
                 torch.save(model.state_dict(), f'/content/drive/MyDrive/model.pt')
-                torch.jit.script(model).save(f'/content/drive/MyDrive/model_jit.pt')
+                # torch.jit.script(model).save(f'/content/drive/MyDrive/model_jit.pt')
         
         # checkpoint 
         if epoch % 100 == 1:
