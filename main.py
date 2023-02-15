@@ -280,12 +280,12 @@ def main():
             torch.save(model.state_dict(), f'{args.checkpoint}/model/model.pt')
             torch.jit.script(model).save(f'{args.checkpoint}/model/model_jit.pt')
             if args.colab:
-                torch.save(model.state_dict(), f'/content/drive/Mydrive/model.pt')
-                torch.jit.script(model).save(f'/content/drive/Mydrive/model_jit.pt')
+                torch.save(model.state_dict(), f'/content/drive/MyDrive/model.pt')
+                torch.jit.script(model).save(f'/content/drive/MyDrive/model_jit.pt')
         
         # checkpoint 
         if epoch % 100 == 1:
-            save_checkpoint('/content/drive/Mydrive/checkpoint',epoch,model,optimizer)
+            save_checkpoint('/content/drive/MyDrive/checkpoint',epoch,model,optimizer)
 
 
 if __name__ == '__main__':
