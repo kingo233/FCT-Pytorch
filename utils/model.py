@@ -181,18 +181,27 @@ class DS_out(nn.Module):
         super().__init__()
         self.upsample = nn.Upsample(scale_factor=2)
         self.layernorm = nn.LayerNorm(in_channels, eps=1e-5)
-        self.conv1 = nn.Conv2d(in_channels, in_channels, 3, 1, padding="same")
-        self.conv2 = nn.Conv2d(in_channels, in_channels, 3, 1, padding="same")
-        self.conv3 = nn.Conv2d(in_channels, 4, 3, 1, padding="same")
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(in_channels, in_channels, 3, 1, padding="same"),
+            nn.ReLU()
+        ) 
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(in_channels, in_channels, 3, 1, padding="same"),
+            nn.ReLU()
+        ) 
+        self.conv3 = nn.Sequential(
+            nn.Conv2d(in_channels, 4, 3, 1, padding="same"),
+            nn.Sigmoid()
+        ) 
 
     def forward(self, x):
         x1 = self.upsample(x)
         x1 = x1.permute(0, 2, 3, 1)
         x1 = self.layernorm(x1)
         x1 = x1.permute(0, 3, 1, 2)
-        x1 = F.relu(self.conv1(x1))
-        x1 = F.relu(self.conv2(x1))
-        out = F.sigmoid(self.conv3(x1))
+        x1 = self.conv1(x1)
+        x1 = self.conv2(x1)
+        out = self.conv3(x1)
         
         return out
 
