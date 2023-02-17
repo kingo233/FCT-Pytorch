@@ -285,7 +285,7 @@ def main():
                 # torch.jit.script(model).save(f'/content/drive/MyDrive/model_jit.pt')
         
         # checkpoint 
-        if epoch % 100 == 1:
+        if epoch % 20 == 0:
             save_checkpoint('/content/drive/MyDrive/checkpoint',epoch,model,optimizer)
 
 
