@@ -278,10 +278,10 @@ def main():
         # model save
         if validate_loss < min_loss:
             min_loss = validate_loss
-            torch.save(model.state_dict(), f'{args.checkpoint}/model/model.pt')
+            torch.save(model.state_dict(), f'{args.checkpoint}/model/fct.pt')
             # torch.jit.script(model).save(f'{args.checkpoint}/model/model_jit.pt')
             if args.colab:
-                torch.save(model.state_dict(), f'/content/drive/MyDrive/model.pt')
+                torch.save(model.state_dict(), f'/content/drive/MyDrive/fct.pt')
                 # torch.jit.script(model).save(f'/content/drive/MyDrive/model_jit.pt')
         
         # checkpoint 
