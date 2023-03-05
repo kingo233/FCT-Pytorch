@@ -14,7 +14,7 @@ def parse_args():
     parser.add_argument("--workers", default=4, type=int, help="number of workers")
     
     # train parameters
-    parser.add_argument('--batch_size',default=4,type=int,help='batch size,default size 1')
+    parser.add_argument('--batch_size',default=1,type=int,help='batch size,default size 1')
     parser.add_argument('--max_epoch',default=200,type=int,help='the max number with epoch')
     parser.add_argument('--lr',default=1e-3,type=float,help='learning rate,when resume,set to 0 means using checkpoint lr,or a new lr')
     parser.add_argument('--decay',default=0.001,help='L2 norm')

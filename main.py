@@ -7,6 +7,7 @@ import random
 import time
 import torch.nn as nn
 import sys
+import monai.metrics
 from torch.utils.data import DataLoader,TensorDataset
 from datetime import datetime
 # from google.colab import drive
@@ -15,6 +16,7 @@ from torch.utils.tensorboard import SummaryWriter
 from utils.args_utils import parse_args
 from utils.data_utils import get_acdc,convert_masks
 from utils.model import FCT
+from medpy.metric.binary import hd, dc, hd95
 
 
 logging.config.fileConfig('./config/log_config.conf')
@@ -166,6 +168,55 @@ def init_weights(m):
         if m.bias is not None:
             torch.nn.init.zeros_(m.bias)
 
+def metrics(img_gt, img_pred):
+    """
+    Function to compute the metrics between two segmentation maps given as input.
+    Parameters
+    ----------
+    img_gt: np.array
+    Array of the ground truth segmentation map.
+    img_pred: np.array
+    Array of the predicted segmentation map.
+    voxel_size: list, tuple or np.array
+    The size of a voxel of the images used to compute the volumes.
+    Return
+    ------
+    A list of metrics in this order, [Dice LV, Volume LV, Err LV(ml),
+    Dice RV, Volume RV, Err RV(ml), Dice MYO, Volume MYO, Err MYO(ml)]
+    """
+    
+    # Dice = (2xIntersection)/(Union+Intersection)
+    # F1 score
+    # https://www.youtube.com/watch?v=AZr64OxshLo
+
+
+    if img_gt.ndim != img_pred.ndim:
+        raise ValueError("The arrays 'img_gt' and 'img_pred' should have the "
+                         "same dimension, {} against {}".format(img_gt.ndim,
+                                                                img_pred.ndim))
+    res = []
+    # Loop on each classes of the input images
+    for c in [3, 1, 2]:
+        # Copy the gt image to not alterate the input
+        gt_c_i = np.copy(img_gt)
+        gt_c_i[gt_c_i != c] = 0
+
+        # Copy the pred image to not alterate the input
+        pred_c_i = np.copy(img_pred)
+        pred_c_i[pred_c_i != c] = 0
+
+        # Clip the value to compute the volumes
+        gt_c_i = np.clip(gt_c_i, 0, 1)
+        pred_c_i = np.clip(pred_c_i, 0, 1)
+
+        # Compute the Dice
+        dice = dc(gt_c_i, pred_c_i)
+
+
+        res.append(dice)
+        
+    return res
+
 
 def main():
     # random seed
@@ -259,6 +310,11 @@ def main():
                 pred_y = model(x)
                 loss = loss_fn(pred_y[2],y)
                 validate_loss_list.append(loss)
+                y_pred = torch.argmax(pred_y[2],axis=1)
+                y_pred_onehot = torch.nn.functional.one_hot(y_pred,4).permute(0,3,1,2)
+                dices = metrics(y,y_pred_onehot)
+                print(dices)
+                
         validate_loss = torch.tensor(validate_loss_list).mean()
         # tensorboard
         tb_writer.add_scalar('loss/train_loss', train_loss, epoch)
@@ -286,7 +342,7 @@ def main():
         
         # checkpoint 
         if epoch % 20 == 0:
-            save_checkpoint('/content/drive/MyDrive/checkpoint',epoch,model,optimizer)
+            save_checkpoint('/checkpoint',epoch,model,optimizer)
 
 
 if __name__ == '__main__':
