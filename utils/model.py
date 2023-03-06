@@ -32,10 +32,10 @@ class Attention(nn.Module):
                                                bias=attention_bias, 
                                                batch_first=True,
                                                # dropout = 0.0,
-                                               num_heads=1)#num_heads=self.num_heads)
+                                               num_heads=self.num_heads)
 
     def _build_projection(self, x, qkv):
-
+        # x shape [batch,channel,size,size]
         
         if qkv == "q":
             x1 = F.relu(self.conv_q(x))
@@ -211,20 +211,20 @@ class Block_encoder_bottleneck(nn.Module):
         self.blk = blk
         if ((self.blk=="first") or (self.blk=="bottleneck")):
             self.layernorm = nn.LayerNorm(in_channels, eps=1e-5)
-            self.conv1 = nn.Conv2d(in_channels, out_channels, 3, 1, padding="same")
-            self.conv2 = nn.Conv2d(out_channels, out_channels, 3, 1, padding="same")
+            self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding="same")
+            self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding="same")
             self.trans = Transformer(out_channels, att_heads, dpr)
         elif ((self.blk=="second") or (self.blk=="third") or (self.blk=="fourth")):
             self.layernorm = nn.LayerNorm(in_channels, eps=1e-5)
-            self.conv1 = nn.Conv2d(1, in_channels, 3, 1, padding="same")
-            self.conv2 = nn.Conv2d(out_channels, out_channels, 3, 1, padding="same")
-            self.conv3 = nn.Conv2d(out_channels, out_channels, 3, 1, padding="same")
+            self.conv1 = nn.Conv2d(1, in_channels, kernel_size=3, stride=1, padding="same")
+            self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding="same")
+            self.conv3 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding="same")
             self.trans = Transformer(out_channels, att_heads, dpr)
 
 
     def forward(self, x, scale_img="none"):
         if ((self.blk=="first") or (self.blk=="bottleneck")):
-            x1 = x.permute(0, 2, 3, 1)
+            x1 = x.permute(0, 2, 3, 1) # 把通道移到最后
             x1 = self.layernorm(x1)
             x1 = x1.permute(0, 3, 1, 2)
             x1 = F.relu(self.conv1(x1))
@@ -265,10 +265,6 @@ class FCT(nn.Module):
 
         self.drp_out = 0.3
 
-        # shape
-        init_sizes = torch.ones((2,224,224,1))
-        init_sizes = init_sizes.permute(0, 3, 1, 2)
-
         # Multi-scale input
         self.scale_img = nn.AvgPool2d(2,2)   
 
@@ -290,9 +286,9 @@ class FCT(nn.Module):
     def forward(self,x):
 
         # Multi-scale input
-        scale_img_2 = self.scale_img(x)
-        scale_img_3 = self.scale_img(scale_img_2)
-        scale_img_4 = self.scale_img(scale_img_3)  
+        scale_img_2 = self.scale_img(x) # x shape[batch_size,channel(1),224,224]
+        scale_img_3 = self.scale_img(scale_img_2) # shape[batch,1,56,56]
+        scale_img_4 = self.scale_img(scale_img_3) # shape[batch,1,28,28] 
 
         x = self.block_1(x)
         # print(f"Block 1 out -> {list(x.size())}")

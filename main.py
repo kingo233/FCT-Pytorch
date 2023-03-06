@@ -342,7 +342,7 @@ def main():
         
         # checkpoint 
         if epoch % 20 == 0:
-            save_checkpoint('/checkpoint',epoch,model,optimizer)
+            save_checkpoint('checkpoint',epoch,model,optimizer)
 
 
 if __name__ == '__main__':
