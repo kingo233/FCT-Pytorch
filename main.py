@@ -168,54 +168,22 @@ def init_weights(m):
         if m.bias is not None:
             torch.nn.init.zeros_(m.bias)
 
-def metrics(img_gt, img_pred):
+def compute_dice(pred_y, y):
     """
-    Function to compute the metrics between two segmentation maps given as input.
-    Parameters
-    ----------
-    img_gt: np.array
-    Array of the ground truth segmentation map.
-    img_pred: np.array
-    Array of the predicted segmentation map.
-    voxel_size: list, tuple or np.array
-    The size of a voxel of the images used to compute the volumes.
-    Return
-    ------
-    A list of metrics in this order, [Dice LV, Volume LV, Err LV(ml),
-    Dice RV, Volume RV, Err RV(ml), Dice MYO, Volume MYO, Err MYO(ml)]
+    Computes the Dice coefficient for each class in the ACDC dataset.
+    Assumes binary masks with shape (num_masks, num_classes, height, width).
     """
+    epsilon = 1e-6
+    num_masks = pred_y.shape[0]
+    num_classes = pred_y.shape[1]
+    dice_scores = torch.zeros((num_classes,)).cuda()
     
-    # Dice = (2xIntersection)/(Union+Intersection)
-    # F1 score
-    # https://www.youtube.com/watch?v=AZr64OxshLo
-
-
-    if img_gt.ndim != img_pred.ndim:
-        raise ValueError("The arrays 'img_gt' and 'img_pred' should have the "
-                         "same dimension, {} against {}".format(img_gt.ndim,
-                                                                img_pred.ndim))
-    res = []
-    # Loop on each classes of the input images
-    for c in [3, 1, 2]:
-        # Copy the gt image to not alterate the input
-        gt_c_i = np.copy(img_gt)
-        gt_c_i[gt_c_i != c] = 0
-
-        # Copy the pred image to not alterate the input
-        pred_c_i = np.copy(img_pred)
-        pred_c_i[pred_c_i != c] = 0
-
-        # Clip the value to compute the volumes
-        gt_c_i = np.clip(gt_c_i, 0, 1)
-        pred_c_i = np.clip(pred_c_i, 0, 1)
-
-        # Compute the Dice
-        dice = dc(gt_c_i, pred_c_i)
-
-
-        res.append(dice)
-        
-    return res
+    for c in range(num_classes):
+        intersection = torch.sum(pred_y[:,c] * y[:,c])
+        sum_masks = torch.sum(pred_y[:,c]) + torch.sum(y[:,c])
+        dice_scores[c] = (2. * intersection + epsilon) / (sum_masks + epsilon)
+    
+    return dice_scores
 
 
 def main():
@@ -303,6 +271,10 @@ def main():
         # validate
         model.eval()
         validate_loss_list = []
+        mean_dice_list = []
+        LV_dice_list = []
+        RV_dice_list = []
+        MYO_dice_list = []
         with torch.no_grad():
             for i,(x,y) in enumerate(validation_dataloader):
                 x = x.to(device)
@@ -312,13 +284,24 @@ def main():
                 validate_loss_list.append(loss)
                 y_pred = torch.argmax(pred_y[2],axis=1)
                 y_pred_onehot = torch.nn.functional.one_hot(y_pred,4).permute(0,3,1,2)
-                dices = metrics(y,y_pred_onehot)
-                print(dices)
+                dice = compute_dice(y_pred_onehot,y)
+                dice_LV = dice[3]; LV_dice_list.append(dice_LV)
+                dice_RV = dice[1]; RV_dice_list.append(dice_RV)
+                dice_MYO = dice[2]; MYO_dice_list.append(dice_MYO)
+                mean_dice_list.append(dice.mean())
                 
         validate_loss = torch.tensor(validate_loss_list).mean()
+        dice_coef = torch.tensor(mean_dice_list).mean()
+        LV_dice = torch.tensor(LV_dice_list).mean()
+        RV_dice = torch.tensor(RV_dice_list).mean()
+        MYO_dice = torch.tensor(MYO_dice_list).mean()
         # tensorboard
         tb_writer.add_scalar('loss/train_loss', train_loss, epoch)
         tb_writer.add_scalar('loss/validate_loss', validate_loss, epoch)
+        tb_writer.add_scalar('dice/all_dice',dice_coef, epoch)
+        tb_writer.add_scalar('dice/LV_dice',LV_dice, epoch)
+        tb_writer.add_scalar('dice/RV_dice',RV_dice, epoch)
+        tb_writer.add_scalar('dice/MYO_dice',MYO_dice, epoch)
         tb_writer.add_scalar(f'lr/{epoch // 100}', optimizer.param_groups[0]["lr"], epoch)
         for name in grads_dict:
             # 分段看
@@ -342,7 +325,7 @@ def main():
         
         # checkpoint 
         if epoch % 20 == 0:
-            save_checkpoint('/checkpoint',epoch,model,optimizer)
+            save_checkpoint('checkpoint',epoch,model,optimizer)
 
 
 if __name__ == '__main__':
