@@ -16,7 +16,6 @@ from torch.utils.tensorboard import SummaryWriter
 from utils.args_utils import parse_args
 from utils.data_utils import get_acdc,convert_masks
 from utils.model import FCT
-from medpy.metric.binary import hd, dc, hd95
 
 
 logging.config.fileConfig('./config/log_config.conf')
@@ -55,7 +54,7 @@ def get_lr_scheduler(args,optimizer):
             factor=args.lr_factor,
             verbose=True,
             threshold=1e-6,
-            patience=10,
+            patience=5,
             min_lr=args.min_lr)
         return scheduler
     if args.lr_scheduler == 'CosineAnnealingWarmRestarts':
@@ -310,7 +309,7 @@ def main():
         # log
         logger.info('-' * 35)
         logger.info(
-            f'epoch: {epoch},train loss:{train_loss:.6f},validate loss:{validate_loss:.6f}'
+            f'epoch: {epoch},train loss:{train_loss:.6f},validate loss:{validate_loss:.6f},LV_dice:{LV_dice},RV_dice:{RV_dice},MYO_dice:{MYO_dice}'
         )
         logger.info('-' * 35)
 

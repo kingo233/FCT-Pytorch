@@ -15,11 +15,11 @@ def parse_args():
     
     # train parameters
     parser.add_argument('--batch_size',default=1,type=int,help='batch size,default size 1')
-    parser.add_argument('--max_epoch',default=200,type=int,help='the max number with epoch')
+    parser.add_argument('--max_epoch',default=30,type=int,help='the max number with epoch')
     parser.add_argument('--lr',default=1e-3,type=float,help='learning rate,when resume,set to 0 means using checkpoint lr,or a new lr')
     parser.add_argument('--decay',default=0.001,help='L2 norm')
     parser.add_argument('--lr_factor',default=0.5,help='dynamic learning rate factor,when loss not change,new lr = old_lr * lr_factor')
-    parser.add_argument('--min_lr',default=5e-7,help='min dynamic learing rate')
+    parser.add_argument('--min_lr',default=6e-5,help='min dynamic learing rate')
     parser.add_argument('--lr_scheduler',default='ReduceLROnPlateau')
     parser.add_argument('--resume',action='store_true')
 
