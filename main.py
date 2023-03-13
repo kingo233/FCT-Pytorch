@@ -8,6 +8,7 @@ import time
 import torch.nn as nn
 import sys
 import monai.metrics
+import torch.nn.functional as F
 from torch.utils.data import DataLoader,TensorDataset
 from datetime import datetime
 # from google.colab import drive
@@ -151,7 +152,8 @@ def load_checkpoint(path: str,
         optimizer.load_state_dict(data['optimizer'])
         for state in optimizer.state.values():
             for k, v in state.items():
-                state[k] = v.cuda()
+                if hasattr(v,'cuda'):
+                    state[k] = v.cuda()
 
         # Next epoch
         return data['epoch'] + 1
@@ -279,7 +281,9 @@ def main():
                 x = x.to(device)
                 y = y.to(device)
                 pred_y = model(x)
-                loss = loss_fn(pred_y[2],y)
+                down1 = F.interpolate(y,112)
+                down2 = F.interpolate(y,56)
+                loss = loss_fn(pred_y[2],y) * 0.57 + loss_fn(pred_y[1],down1) * 0.29 + loss_fn(pred_y[0],down2) * 0.14
                 validate_loss_list.append(loss)
                 y_pred = torch.argmax(pred_y[2],axis=1)
                 y_pred_onehot = torch.nn.functional.one_hot(y_pred,4).permute(0,3,1,2)
