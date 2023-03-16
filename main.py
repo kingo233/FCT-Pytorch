@@ -253,6 +253,7 @@ def main():
             pred_y = model(x)
             loss = loss_fn(pred_y[2],y)
             train_loss_list.append(loss)
+            optimizer.zero_grad()
             loss.backward()
             optimizer.step()
             for name, params in model.named_parameters():
@@ -263,7 +264,6 @@ def main():
                     grads_dict[name].append(params.grad.mean())
                     abs_grads_dict[name].append(params.grad.abs().mean())
         
-        optimizer.zero_grad()
         train_loss = torch.tensor(train_loss_list).mean()
         if isinstance(scheduler,torch.optim.lr_scheduler.ReduceLROnPlateau):
             scheduler.step(train_loss)
