@@ -26,7 +26,7 @@ logger = logging.getLogger('mylog')
 args = parse_args()
 begin_time = datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-# device = 'mps'
+device = 'mps'
 
 def setup_seed(seed):
     torch.manual_seed(seed)
@@ -254,7 +254,8 @@ def main():
             pred_y = model(x)
             down1 = F.interpolate(y,112)
             down2 = F.interpolate(y,56)
-            loss = (loss_fn(pred_y[2],y) * 0.57 + loss_fn(pred_y[1],down1) * 0.29 + loss_fn(pred_y[0],down2) * 0.14) * 1e4
+            loss = (loss_fn(pred_y[2],y) * 0.57 + loss_fn(pred_y[1],down1) * 0.29 + loss_fn(pred_y[0],down2) * 0.14)
+            loss *= 1e4
             with torch.no_grad():
                 loss /= 1e4
             
