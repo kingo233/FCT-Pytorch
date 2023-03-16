@@ -9,6 +9,7 @@ import torch.nn as nn
 import sys
 import monai.metrics
 import torch.nn.functional as F
+import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader,TensorDataset
 from datetime import datetime
 # from google.colab import drive
@@ -24,8 +25,8 @@ logger = logging.getLogger('mylog')
 
 args = parse_args()
 begin_time = datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
-assert torch.cuda.is_available() == True
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = 'mps'
 
 def setup_seed(seed):
     torch.manual_seed(seed)
@@ -210,8 +211,8 @@ def main():
     acdc_data[1] = convert_masks(acdc_data[1])
     acdc_data[0] = np.transpose(acdc_data[0], (0, 3, 1, 2)) # for the channels
     acdc_data[1] = np.transpose(acdc_data[1], (0, 3, 1, 2)) # for the channels
-    acdc_data[0] = torch.Tensor(acdc_data[0]) # convert to tensors
-    acdc_data[1] = torch.Tensor(acdc_data[1]) # convert to tensors
+    acdc_data[0] = torch.Tensor(acdc_data[0])  /  255 # convert to tensors
+    acdc_data[1] = torch.Tensor(acdc_data[1])# convert to tensors
     acdc_data = TensorDataset(acdc_data[0], acdc_data[1])
     train_dataloader = DataLoader(acdc_data, batch_size=args.batch_size)
     # validation
@@ -219,7 +220,7 @@ def main():
     acdc_data[1] = convert_masks(acdc_data[1])
     acdc_data[0] = np.transpose(acdc_data[0], (0, 3, 1, 2)) # for the channels
     acdc_data[1] = np.transpose(acdc_data[1], (0, 3, 1, 2)) # for the channels
-    acdc_data[0] = torch.Tensor(acdc_data[0]) # convert to tensors
+    acdc_data[0] = torch.Tensor(acdc_data[0]) / 255 # convert to tensors
     acdc_data[1] = torch.Tensor(acdc_data[1]) # convert to tensors
     acdc_data = TensorDataset(acdc_data[0], acdc_data[1])
     validation_dataloader = DataLoader(acdc_data, batch_size=args.batch_size)
@@ -254,6 +255,7 @@ def main():
             loss = loss_fn(pred_y[2],y)
             train_loss_list.append(loss)
             optimizer.zero_grad()
+            # with torch.autograd.detect_anomaly():
             loss.backward()
             optimizer.step()
             for name, params in model.named_parameters():
