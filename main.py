@@ -26,6 +26,7 @@ logger = logging.getLogger('mylog')
 args = parse_args()
 begin_time = datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+# device = 'mps'
 
 def setup_seed(seed):
     torch.manual_seed(seed)
