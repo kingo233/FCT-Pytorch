@@ -292,7 +292,7 @@ class FCT(nn.Module):
         super().__init__()
 
         # attention heads and filters per block
-        att_heads = [2, 4, 8, 12, 16, 12, 8, 4, 2]
+        att_heads = [2, 4, 8, 8, 16, 8, 8, 4, 2]
         filters = [16, 32, 64, 128, 384, 128, 64, 32, 16]
 
         # number of blocks used in the model
