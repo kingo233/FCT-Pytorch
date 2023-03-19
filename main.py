@@ -227,7 +227,7 @@ def main():
 
     # initialize the loss function
     loss_fn = nn.BCELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr,weight_decay=args.decay)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr) # weight_decay=args.decay)
     scheduler = get_lr_scheduler(args,optimizer)
     model.to(device)
 
@@ -273,10 +273,6 @@ def main():
                     abs_grads_dict[name].append(params.grad.abs().mean())
         
         train_loss = torch.tensor(train_loss_list).mean()
-        if isinstance(scheduler,torch.optim.lr_scheduler.ReduceLROnPlateau):
-            scheduler.step(train_loss)
-        if isinstance(scheduler,torch.optim.lr_scheduler.CosineAnnealingWarmRestarts):
-            scheduler.step()
         # validate
         model.eval()
         validate_loss_list = []
@@ -302,6 +298,13 @@ def main():
                 mean_dice_list.append(dice.mean())
                 
         validate_loss = torch.tensor(validate_loss_list).mean()
+
+        # lr scheduler
+        if isinstance(scheduler,torch.optim.lr_scheduler.ReduceLROnPlateau):
+            scheduler.step(validate_loss)
+        if isinstance(scheduler,torch.optim.lr_scheduler.CosineAnnealingWarmRestarts):
+            scheduler.step()
+
         dice_coef = torch.tensor(mean_dice_list).mean()
         LV_dice = torch.tensor(LV_dice_list).mean()
         RV_dice = torch.tensor(RV_dice_list).mean()
