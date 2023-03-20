@@ -255,9 +255,9 @@ def main():
             down1 = F.interpolate(y,112)
             down2 = F.interpolate(y,56)
             loss = (loss_fn(pred_y[2],y) * 0.57 + loss_fn(pred_y[1],down1) * 0.29 + loss_fn(pred_y[0],down2) * 0.14)
-            loss *= 1e4 # scale grad
-            with torch.no_grad():
-                loss /= 1e4
+            # loss *= 1e4 # scale grad
+            # with torch.no_grad():
+            #     loss /= 1e4
             
             train_loss_list.append(loss)
             optimizer.zero_grad()
