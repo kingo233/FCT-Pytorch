@@ -7,7 +7,7 @@ class Convolutional_Attention(nn.Module):
     def __init__(self,
                  channels,
                  num_heads,
-                 proj_drop=0.0,
+                 proj_drop=0.5,
                  kernel_size=3,
                  stride_kv=1,
                  stride_q=1,
@@ -142,22 +142,22 @@ class Wide_Focus(nn.Module):
         self.layer1 = nn.Sequential(
             nn.Conv2d(in_channels,out_channels, kernel_size=3, stride=1, padding="same"),
             nn.GELU(),
-            nn.Dropout(0.1)
+            nn.Dropout(0.5)
         )
         self.layer_dilation2 = nn.Sequential(
             nn.Conv2d(in_channels,out_channels, kernel_size=3, stride=1, padding="same", dilation=2),
             nn.GELU(),
-            nn.Dropout(0.1)
+            nn.Dropout(0.5)
         )
         self.layer_dilation3 = nn.Sequential(
             nn.Conv2d(in_channels,out_channels, kernel_size=3, stride=1, padding="same", dilation=3),
             nn.GELU(),
-            nn.Dropout(0.1)
+            nn.Dropout(0.5)
         )
         self.layer4 = nn.Sequential(
             nn.Conv2d(in_channels,out_channels, kernel_size=3, stride=1, padding="same"),
             nn.GELU(),
-            nn.Dropout(0.1)
+            nn.Dropout(0.5)
         )
 
 
@@ -185,7 +185,7 @@ class Block_decoder(nn.Module):
         self.layer3 = nn.Sequential(
             nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding="same"),
             nn.ReLU(),
-            nn.Dropout(0.3)
+            nn.Dropout(0.5)
         )
         self.trans = Transformer(out_channels, att_heads, dpr)
         
@@ -241,7 +241,7 @@ class Block_encoder_without_skip(nn.Module):
         self.layer2 = nn.Sequential(
             nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding="same"),
             nn.ReLU(),
-            nn.Dropout(0.3),
+            nn.Dropout(0.5),
             nn.MaxPool2d((2,2))
         )
         self.trans = Transformer(out_channels, att_heads, dpr)
@@ -270,7 +270,7 @@ class Block_encoder_with_skip(nn.Module):
         self.layer3 = nn.Sequential(
             nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding="same"),
             nn.ReLU(),
-            nn.Dropout(0.3),
+            nn.Dropout(0.5),
             nn.MaxPool2d((2,2))
         )
         self.trans = Transformer(out_channels, att_heads, dpr)
