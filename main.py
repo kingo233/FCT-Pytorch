@@ -227,7 +227,7 @@ def main():
 
     # initialize the loss function
     loss_fn = nn.BCELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr) # weight_decay=args.decay)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.decay)
     scheduler = get_lr_scheduler(args,optimizer)
     model.to(device)
 
@@ -247,23 +247,38 @@ def main():
         train_loss_list = []
         grads_dict = {}
         abs_grads_dict = {}
+        train_mean_dice_list = []
+        train_LV_dice_list = []
+        train_RV_dice_list = []
+        train_MYO_dice_list = []
         for i,(x,y) in enumerate(train_dataloader):
             x = x.to(device)
             y = y.to(device)
 
             pred_y = model(x)
+            # dsn
             down1 = F.interpolate(y,112)
             down2 = F.interpolate(y,56)
             loss = (loss_fn(pred_y[2],y) * 0.57 + loss_fn(pred_y[1],down1) * 0.29 + loss_fn(pred_y[0],down2) * 0.14)
-            # loss *= 1e4 # scale grad
-            # with torch.no_grad():
-            #     loss /= 1e4
+            loss *= 1e4 # scale grad
+            with torch.no_grad():
+                loss /= 1e4
             
             train_loss_list.append(loss)
             optimizer.zero_grad()
             # with torch.autograd.detect_anomaly():
             loss.backward()
             optimizer.step()
+
+            # train dice
+            y_pred = torch.argmax(pred_y[2],axis=1)
+            y_pred_onehot = torch.nn.functional.one_hot(y_pred,4).permute(0,3,1,2)
+            dice = compute_dice(y_pred_onehot,y)
+            dice_LV = dice[3]; train_LV_dice_list.append(dice_LV)
+            dice_RV = dice[1]; train_RV_dice_list.append(dice_RV)
+            dice_MYO = dice[2]; train_MYO_dice_list.append(dice_MYO)
+            train_mean_dice_list.append(dice.mean())
+            # save grad
             for name, params in model.named_parameters():
                 if name not in grads_dict:
                     grads_dict[name] = []
@@ -285,10 +300,13 @@ def main():
                 x = x.to(device)
                 y = y.to(device)
                 pred_y = model(x)
+
                 down1 = F.interpolate(y,112)
                 down2 = F.interpolate(y,56)
                 loss = loss_fn(pred_y[2],y) * 0.57 + loss_fn(pred_y[1],down1) * 0.29 + loss_fn(pred_y[0],down2) * 0.14
                 validate_loss_list.append(loss)
+
+                # validate dice
                 y_pred = torch.argmax(pred_y[2],axis=1)
                 y_pred_onehot = torch.nn.functional.one_hot(y_pred,4).permute(0,3,1,2)
                 dice = compute_dice(y_pred_onehot,y)
@@ -305,6 +323,13 @@ def main():
         if isinstance(scheduler,torch.optim.lr_scheduler.CosineAnnealingWarmRestarts):
             scheduler.step()
 
+        # train dice calc
+        train_dice_coef = torch.tensor(train_mean_dice_list).mean()
+        train_LV_dice = torch.tensor(train_LV_dice_list).mean()
+        train_RV_dice = torch.tensor(train_RV_dice_list).mean()
+        train_MYO_dice = torch.tensor(train_MYO_dice_list).mean()
+
+        # validate dice calc
         dice_coef = torch.tensor(mean_dice_list).mean()
         LV_dice = torch.tensor(LV_dice_list).mean()
         RV_dice = torch.tensor(RV_dice_list).mean()
@@ -312,10 +337,15 @@ def main():
         # tensorboard
         tb_writer.add_scalar('loss/train_loss', train_loss, epoch)
         tb_writer.add_scalar('loss/validate_loss', validate_loss, epoch)
-        tb_writer.add_scalar('dice/all_dice',dice_coef, epoch)
+        tb_writer.add_scalar('dice/all_validate_dice',dice_coef, epoch)
         tb_writer.add_scalar('dice/LV_dice',LV_dice, epoch)
         tb_writer.add_scalar('dice/RV_dice',RV_dice, epoch)
         tb_writer.add_scalar('dice/MYO_dice',MYO_dice, epoch)
+        tb_writer.add_scalar('dice/all_train_dice',train_dice_coef, epoch)
+        tb_writer.add_scalar('dice/train_LV_dice',train_LV_dice, epoch)
+        tb_writer.add_scalar('dice/train_RV_dice',train_RV_dice, epoch)
+        tb_writer.add_scalar('dice/train_MYO_dice',train_MYO_dice, epoch)
+
         tb_writer.add_scalar(f'lr/{epoch // 100}', optimizer.param_groups[0]["lr"], epoch)
         for name in grads_dict:
             # 分段看
