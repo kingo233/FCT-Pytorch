@@ -277,7 +277,7 @@ def main():
             dice_LV = dice[3]; train_LV_dice_list.append(dice_LV)
             dice_RV = dice[1]; train_RV_dice_list.append(dice_RV)
             dice_MYO = dice[2]; train_MYO_dice_list.append(dice_MYO)
-            train_mean_dice_list.append(dice.mean())
+            train_mean_dice_list.append(dice[1:].mean())
             # save grad
             for name, params in model.named_parameters():
                 if name not in grads_dict:
@@ -313,7 +313,7 @@ def main():
                 dice_LV = dice[3]; LV_dice_list.append(dice_LV)
                 dice_RV = dice[1]; RV_dice_list.append(dice_RV)
                 dice_MYO = dice[2]; MYO_dice_list.append(dice_MYO)
-                mean_dice_list.append(dice.mean())
+                mean_dice_list.append(dice[1:].mean())
                 
         validate_loss = torch.tensor(validate_loss_list).mean()
 
