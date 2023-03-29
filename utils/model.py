@@ -76,9 +76,9 @@ class Convolutional_Attention(nn.Module):
 
     def forward(self, x):
         q, k, v = self.get_qkv(x)
-        q = q.view(x.shape[0], x.shape[1], x.shape[2]*x.shape[3])
-        k = k.view(x.shape[0], x.shape[1], x.shape[2]*x.shape[3])
-        v = v.view(x.shape[0], x.shape[1], x.shape[2]*x.shape[3])
+        q = q.view(q.shape[0], q.shape[1], q.shape[2]*q.shape[3])
+        k = k.view(k.shape[0], k.shape[1], k.shape[2]*k.shape[3])
+        v = v.view(v.shape[0], v.shape[1], v.shape[2]*v.shape[3])
         q = q.permute(0, 2, 1)
         k = k.permute(0, 2, 1)
         v = v.permute(0, 2, 1)
