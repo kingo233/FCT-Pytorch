@@ -115,7 +115,7 @@ class Transformer(nn.Module):
                                          attention_bias=attention_bias,
                                          )
 
-        self.conv1 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding="same")
+        self.conv1 = nn.Conv2d(out_channels * num_heads, out_channels, kernel_size=3, stride=1, padding="same")
         self.layernorm = nn.LayerNorm(self.conv1.out_channels, eps=1e-5)
         self.wide_focus = Wide_Focus(out_channels, out_channels)
 

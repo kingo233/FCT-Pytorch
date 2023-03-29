@@ -178,7 +178,7 @@ def compute_dice(pred_y, y):
     epsilon = 1e-6
     num_masks = pred_y.shape[0]
     num_classes = pred_y.shape[1]
-    dice_scores = torch.zeros((num_classes,)).cuda()
+    dice_scores = torch.zeros((num_classes,)).to(device)
     
     for c in range(num_classes):
         intersection = torch.sum(pred_y[:,c] * y[:,c])
