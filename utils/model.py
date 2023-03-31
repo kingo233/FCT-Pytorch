@@ -22,27 +22,24 @@ class Convolutional_Attention(nn.Module):
         self.proj_drop = proj_drop
         
         self.layer_q = nn.Sequential(
-            nn.Conv2d(channels, channels * num_heads, kernel_size, stride_q, padding_q, bias=attention_bias, groups=channels),
+            nn.Conv2d(channels, channels, kernel_size, stride_q, padding_q, bias=attention_bias, groups=channels),
             nn.ReLU(),
-            nn.Dropout(proj_drop)
         )
-        self.layernorm_q = nn.LayerNorm(channels * num_heads, eps=1e-5)
+        self.layernorm_q = nn.LayerNorm(channels, eps=1e-5)
 
         self.layer_k = nn.Sequential(
-            nn.Conv2d(channels, channels * num_heads, kernel_size, stride_kv, padding_kv, bias=attention_bias, groups=channels),
+            nn.Conv2d(channels, channels, kernel_size, stride_kv, padding_kv, bias=attention_bias, groups=channels),
             nn.ReLU(),
-            nn.Dropout(proj_drop)
         )
-        self.layernorm_k = nn.LayerNorm(channels * num_heads, eps=1e-5)
+        self.layernorm_k = nn.LayerNorm(channels, eps=1e-5)
 
         self.layer_v = nn.Sequential(
-            nn.Conv2d(channels, channels * num_heads, kernel_size, stride_kv, padding_kv, bias=attention_bias, groups=channels),
+            nn.Conv2d(channels, channels, kernel_size, stride_kv, padding_kv, bias=attention_bias, groups=channels),
             nn.ReLU(),
-            nn.Dropout(proj_drop)
         )
-        self.layernorm_v = nn.LayerNorm(channels * num_heads, eps=1e-5)
+        self.layernorm_v = nn.LayerNorm(channels, eps=1e-5)
         
-        self.attention = nn.MultiheadAttention(embed_dim=channels * num_heads, 
+        self.attention = nn.MultiheadAttention(embed_dim=channels, 
                                                bias=attention_bias, 
                                                batch_first=True,
                                                dropout = self.proj_drop,
@@ -117,7 +114,7 @@ class Transformer(nn.Module):
                                          attention_bias=attention_bias,
                                          )
 
-        self.conv1 = nn.Conv2d(out_channels * num_heads, out_channels, kernel_size=3, stride=1, padding="same")
+        self.conv1 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding="same")
         self.layernorm = nn.LayerNorm(self.conv1.out_channels, eps=1e-5)
         self.wide_focus = Wide_Focus(out_channels, out_channels)
 
@@ -144,22 +141,22 @@ class Wide_Focus(nn.Module):
         self.layer1 = nn.Sequential(
             nn.Conv2d(in_channels,out_channels, kernel_size=3, stride=1, padding="same"),
             nn.GELU(),
-            nn.Dropout(0.5)
+            nn.Dropout(0.1)
         )
         self.layer_dilation2 = nn.Sequential(
             nn.Conv2d(in_channels,out_channels, kernel_size=3, stride=1, padding="same", dilation=2),
             nn.GELU(),
-            nn.Dropout(0.5)
+            nn.Dropout(0.1)
         )
         self.layer_dilation3 = nn.Sequential(
             nn.Conv2d(in_channels,out_channels, kernel_size=3, stride=1, padding="same", dilation=3),
             nn.GELU(),
-            nn.Dropout(0.5)
+            nn.Dropout(0.1)
         )
         self.layer4 = nn.Sequential(
             nn.Conv2d(in_channels,out_channels, kernel_size=3, stride=1, padding="same"),
             nn.GELU(),
-            nn.Dropout(0.5)
+            nn.Dropout(0.1)
         )
 
 
@@ -187,7 +184,7 @@ class Block_decoder(nn.Module):
         self.layer3 = nn.Sequential(
             nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding="same"),
             nn.ReLU(),
-            nn.Dropout(0.5)
+            nn.Dropout(0.3)
         )
         self.trans = Transformer(out_channels, att_heads, dpr)
         
@@ -243,7 +240,7 @@ class Block_encoder_without_skip(nn.Module):
         self.layer2 = nn.Sequential(
             nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding="same"),
             nn.ReLU(),
-            nn.Dropout(0.5),
+            nn.Dropout(0.3),
             nn.MaxPool2d((2,2))
         )
         self.trans = Transformer(out_channels, att_heads, dpr)
@@ -272,7 +269,7 @@ class Block_encoder_with_skip(nn.Module):
         self.layer3 = nn.Sequential(
             nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding="same"),
             nn.ReLU(),
-            nn.Dropout(0.5),
+            nn.Dropout(0.3),
             nn.MaxPool2d((2,2))
         )
         self.trans = Transformer(out_channels, att_heads, dpr)
