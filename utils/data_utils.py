@@ -120,3 +120,16 @@ def convert_masks(y, data="acdc"):
         print("Data set not recognized")
         
     return masks
+
+def convert_mask_single(y):
+    """
+    Given one masks with many classes create one mask per class
+    y: shape (w,h)
+    """
+    mask = np.zeros((4, y.shape[0], y.shape[1]))
+    mask[0, :, :] = np.where(y == 0, 1, 0)
+    mask[1, :, :] = np.where(y == 1, 1, 0)
+    mask[2, :, :] = np.where(y == 2, 1, 0)
+    mask[3, :, :] = np.where(y == 3, 1, 0)
+
+    return mask

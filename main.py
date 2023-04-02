@@ -18,6 +18,7 @@ from torch.utils.tensorboard import SummaryWriter
 from utils.args_utils import parse_args
 from utils.data_utils import get_acdc,convert_masks
 from utils.model import FCT
+from utils.dataset_utils import ACDCTrainDataset
 
 
 logging.config.fileConfig('./config/log_config.conf')
@@ -208,12 +209,12 @@ def main():
     # get data
     # training
     acdc_data, _, _ = get_acdc('ACDC/training')
-    acdc_data[1] = convert_masks(acdc_data[1])
-    acdc_data[0] = np.transpose(acdc_data[0], (0, 3, 1, 2)) # for the channels
-    acdc_data[1] = np.transpose(acdc_data[1], (0, 3, 1, 2)) # for the channels
-    acdc_data[0] = torch.Tensor(acdc_data[0])# convert to tensors
-    acdc_data[1] = torch.Tensor(acdc_data[1])# convert to tensors
-    acdc_data = TensorDataset(acdc_data[0], acdc_data[1])
+    # acdc_data[1] = convert_masks(acdc_data[1])
+    # acdc_data[0] = np.transpose(acdc_data[0], (0, 3, 1, 2)) # for the channels
+    # acdc_data[1] = np.transpose(acdc_data[1], (0, 3, 1, 2)) # for the channels
+    # acdc_data[0] = torch.Tensor(acdc_data[0])# convert to tensors
+    # acdc_data[1] = torch.Tensor(acdc_data[1])# convert to tensors
+    acdc_data = ACDCTrainDataset(acdc_data[0], acdc_data[1])
     train_dataloader = DataLoader(acdc_data, batch_size=args.batch_size)
     # validation
     acdc_data, _, _ = get_acdc('ACDC/testing')
