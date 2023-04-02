@@ -15,7 +15,7 @@ class ACDCTrainDataset(Dataset):
         self.transform = transforms.Compose([
             transforms.RandomVerticalFlip(),
             transforms.RandomHorizontalFlip(),
-            transforms.RandomAffine(degrees=20,translate=(0.2,0.2),interpolation=transforms.InterpolationMode.BILINEAR)
+            transforms.RandomAffine(degrees=20,translate=(0.2,0.2))
         ])
     
     def __len__(self):
