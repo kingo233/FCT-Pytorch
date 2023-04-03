@@ -242,6 +242,7 @@ def main():
             g['weight_decay'] = args.decay
 
     min_loss = sys.maxsize
+    train_step = 0
     for epoch in range(first_epoch,args.max_epoch):
         model.train()
         # mini batch train
@@ -287,6 +288,8 @@ def main():
                 if params.grad is not None:
                     grads_dict[name].append(params.grad.mean())
                     abs_grads_dict[name].append(params.grad.abs().mean())
+                    tb_writer.add_scalar(f'batch_abs_{name}',params.grad.abs().mean(), train_step)
+            train_step += 1
         
         train_loss = torch.tensor(train_loss_list).mean()
         # validate
