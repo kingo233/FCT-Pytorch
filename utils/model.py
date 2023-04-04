@@ -230,9 +230,11 @@ class DS_out(nn.Module):
         return out
 
 class Block_encoder_without_skip(nn.Module):
-    def __init__(self, in_channels, out_channels, att_heads, dpr):
+    def __init__(self, in_channels, out_channels, att_heads, dpr, use_layernorm=True):
         super().__init__()
-        self.layernorm = nn.LayerNorm(in_channels, eps=1e-5)
+        self.use_layernorm = use_layernorm
+        if use_layernorm:
+            self.layernorm = nn.LayerNorm(in_channels,eps=1e-5)
         self.layer1 = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding="same"),
             nn.ReLU()
@@ -246,10 +248,11 @@ class Block_encoder_without_skip(nn.Module):
         self.trans = Transformer(out_channels, att_heads, dpr)
 
     def forward(self, x):
-        x1 = x.permute(0, 2, 3, 1)
-        x1 = self.layernorm(x1)
-        x1 = x1.permute(0, 3, 1, 2)
-        x1 = self.layer1(x1)
+        if self.use_layernorm:
+            x = x.permute(0, 2, 3, 1)
+            x = self.layernorm(x)
+            x = x.permute(0, 3, 1, 2)
+        x1 = self.layer1(x)
         x1 = self.layer2(x1)
         x1 = self.trans(x1)
         return x1
@@ -308,7 +311,7 @@ class FCT(nn.Module):
         self.scale_img = nn.AvgPool2d(2,2)   
 
         # model
-        self.block_1 = Block_encoder_without_skip(1, filters[0], att_heads[0], dpr[0])
+        self.block_1 = Block_encoder_without_skip(1, filters[0], att_heads[0], dpr[0],False)
         self.block_2 = Block_encoder_with_skip(filters[0], filters[1], att_heads[1], dpr[1])
         self.block_3 = Block_encoder_with_skip(filters[1], filters[2], att_heads[2], dpr[2])
         self.block_4 = Block_encoder_with_skip(filters[2], filters[3], att_heads[3], dpr[3])
