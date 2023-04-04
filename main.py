@@ -292,6 +292,13 @@ def main():
             train_step += 1
         
         train_loss = torch.tensor(train_loss_list).mean()
+
+        # lr scheduler
+        if isinstance(scheduler,torch.optim.lr_scheduler.ReduceLROnPlateau):
+            scheduler.step(train_loss)
+        if isinstance(scheduler,torch.optim.lr_scheduler.CosineAnnealingWarmRestarts):
+            scheduler.step()
+
         # validate
         model.eval()
         validate_loss_list = []
@@ -321,11 +328,6 @@ def main():
                 
         validate_loss = torch.tensor(validate_loss_list).mean()
 
-        # lr scheduler
-        if isinstance(scheduler,torch.optim.lr_scheduler.ReduceLROnPlateau):
-            scheduler.step(validate_loss)
-        if isinstance(scheduler,torch.optim.lr_scheduler.CosineAnnealingWarmRestarts):
-            scheduler.step()
 
         # train dice calc
         train_dice_coef = torch.tensor(train_mean_dice_list).mean()
