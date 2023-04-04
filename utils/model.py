@@ -7,7 +7,7 @@ class Convolutional_Attention(nn.Module):
     def __init__(self,
                  channels,
                  num_heads,
-                 proj_drop=0.5,
+                 proj_drop=0.0,
                  kernel_size=3,
                  stride_kv=1,
                  stride_q=1,
@@ -22,19 +22,19 @@ class Convolutional_Attention(nn.Module):
         self.proj_drop = proj_drop
         
         self.layer_q = nn.Sequential(
-            nn.Conv2d(channels, channels, kernel_size, stride_q, padding_q, bias=attention_bias, groups=channels),
+            nn.Conv2d(channels, channels, kernel_size, stride_q, padding_q, bias=False, groups=channels),
             nn.ReLU(),
         )
         self.layernorm_q = nn.LayerNorm(channels, eps=1e-5)
 
         self.layer_k = nn.Sequential(
-            nn.Conv2d(channels, channels, kernel_size, stride_kv, padding_kv, bias=attention_bias, groups=channels),
+            nn.Conv2d(channels, channels, kernel_size, stride_kv, padding_kv, bias=False, groups=channels),
             nn.ReLU(),
         )
         self.layernorm_k = nn.LayerNorm(channels, eps=1e-5)
 
         self.layer_v = nn.Sequential(
-            nn.Conv2d(channels, channels, kernel_size, stride_kv, padding_kv, bias=attention_bias, groups=channels),
+            nn.Conv2d(channels, channels, kernel_size, stride_kv, padding_kv, bias=False, groups=channels),
             nn.ReLU(),
         )
         self.layernorm_v = nn.LayerNorm(channels, eps=1e-5)
@@ -96,7 +96,7 @@ class Transformer(nn.Module):
                  out_channels,
                  num_heads,
                  dpr = 0.0,
-                 proj_drop=0.5,
+                 proj_drop=0.0,
                  attention_bias=True,
                  padding_q="same",
                  padding_kv="same",
@@ -214,7 +214,7 @@ class DS_out(nn.Module):
             nn.ReLU()
         ) 
         self.conv3 = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding="same"),
+            nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1, padding="same"),
             nn.Sigmoid()
         ) 
 
