@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 import torch.nn.functional as F
+from torchvision.ops.stochastic_depth import StochasticDepth
 
 class Convolutional_Attention(nn.Module):
     def __init__(self,
@@ -114,19 +115,23 @@ class Transformer(nn.Module):
                                          attention_bias=attention_bias,
                                          )
 
+        self.stochastic_depth = StochasticDepth(dpr,mode='batch')
         self.conv1 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding="same")
         self.layernorm = nn.LayerNorm(self.conv1.out_channels, eps=1e-5)
         self.wide_focus = Wide_Focus(out_channels, out_channels)
 
     def forward(self, x):
         x1 = self.attention_output(x)
+        x1 = self.stochastic_depth(x1)
         x2 = self.conv1(x1) + x
 
         x3 = x2.permute(0, 2, 3, 1)
         x3 = self.layernorm(x3)
         x3 = x3.permute(0, 3, 1, 2)
+        x3 = self.wide_focus(x3)
+        x3 = self.stochastic_depth(x3)
 
-        out = self.wide_focus(x3) + x2
+        out = x3 + x2
         return out
     
 class Wide_Focus(nn.Module): 
@@ -300,7 +305,7 @@ class FCT(nn.Module):
         # number of blocks used in the model
         blocks = len(filters)
 
-        stochastic_depth_rate = 0.0
+        stochastic_depth_rate = 0.5
 
         #probability for each block
         dpr = [x for x in np.linspace(0, stochastic_depth_rate, blocks)]
