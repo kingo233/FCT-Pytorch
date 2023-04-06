@@ -228,7 +228,7 @@ def main():
 
     # initialize the loss function
     loss_fn = nn.BCELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.decay)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)# , weight_decay=args.decay)
     scheduler = get_lr_scheduler(args,optimizer)
     model.to(device)
 
