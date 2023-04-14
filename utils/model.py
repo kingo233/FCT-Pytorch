@@ -23,24 +23,24 @@ class Convolutional_Attention(nn.Module):
         self.proj_drop = proj_drop
         
         self.layer_q = nn.Sequential(
-            nn.Conv2d(channels, channels, kernel_size, stride_q, padding_q, bias=False, groups=channels),
+            nn.Conv2d(channels, channels * num_heads, kernel_size, stride_q, padding_q, bias=False, groups=channels),
             nn.ReLU(),
         )
-        self.layernorm_q = nn.LayerNorm(channels, eps=1e-5)
+        self.layernorm_q = nn.LayerNorm(channels * num_heads, eps=1e-5)
 
         self.layer_k = nn.Sequential(
-            nn.Conv2d(channels, channels, kernel_size, stride_kv, padding_kv, bias=False, groups=channels),
+            nn.Conv2d(channels, channels * num_heads, kernel_size, stride_kv, padding_kv, bias=False, groups=channels),
             nn.ReLU(),
         )
-        self.layernorm_k = nn.LayerNorm(channels, eps=1e-5)
+        self.layernorm_k = nn.LayerNorm(channels * num_heads, eps=1e-5)
 
         self.layer_v = nn.Sequential(
-            nn.Conv2d(channels, channels, kernel_size, stride_kv, padding_kv, bias=False, groups=channels),
+            nn.Conv2d(channels, channels * num_heads, kernel_size, stride_kv, padding_kv, bias=False, groups=channels),
             nn.ReLU(),
         )
-        self.layernorm_v = nn.LayerNorm(channels, eps=1e-5)
+        self.layernorm_v = nn.LayerNorm(channels * num_heads, eps=1e-5)
         
-        self.attention = nn.MultiheadAttention(embed_dim=channels, 
+        self.attention = nn.MultiheadAttention(embed_dim=channels * num_heads, 
                                                bias=attention_bias, 
                                                batch_first=True,
                                                dropout = self.proj_drop,
@@ -97,7 +97,7 @@ class Transformer(nn.Module):
                  out_channels,
                  num_heads,
                  dpr = 0.0,
-                 proj_drop=0.0,
+                 proj_drop=0.5,
                  attention_bias=True,
                  padding_q="same",
                  padding_kv="same",
@@ -116,7 +116,7 @@ class Transformer(nn.Module):
                                          )
 
         self.stochastic_depth = StochasticDepth(dpr,mode='batch')
-        self.conv1 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding="same")
+        self.conv1 = nn.Conv2d(out_channels * num_heads, out_channels, kernel_size=3, stride=1, padding="same")
         self.layernorm = nn.LayerNorm(self.conv1.out_channels, eps=1e-5)
         self.wide_focus = Wide_Focus(out_channels, out_channels)
 
@@ -299,8 +299,8 @@ class FCT(nn.Module):
         super().__init__()
 
         # attention heads and filters per block
-        att_heads = [2, 4, 8, 8, 16, 8, 8, 4, 2]
-        filters = [16, 32, 64, 128, 384, 128, 64, 32, 16]
+        att_heads = [2, 4, 8, 16, 32, 16, 8, 4, 2]
+        filters = [32, 64, 128, 256, 512, 256, 128, 64, 32]
 
         # number of blocks used in the model
         blocks = len(filters)

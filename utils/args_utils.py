@@ -12,6 +12,7 @@ def parse_args():
     parser.add_argument('--predict_mode',default=False,help='Train or Predict')
     parser.add_argument("--use_normal_dataset", action="store_true", help="use monai Dataset class")
     parser.add_argument("--workers", default=4, type=int, help="number of workers")
+    parser.add_argument("--img_size",default=224,type=int)
     
     # train parameters
     parser.add_argument('--batch_size',default=2,type=int,help='batch size,default size 1')

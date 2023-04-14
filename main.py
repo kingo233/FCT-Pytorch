@@ -208,23 +208,23 @@ def main():
 
     # get data
     # training
-    acdc_data, _, _ = get_acdc('ACDC/training')
+    acdc_data, _, _ = get_acdc('ACDC/training', input_size=(args.img_size,args.img_size,1))
     # acdc_data[1] = convert_masks(acdc_data[1])
     # acdc_data[0] = np.transpose(acdc_data[0], (0, 3, 1, 2)) # for the channels
     # acdc_data[1] = np.transpose(acdc_data[1], (0, 3, 1, 2)) # for the channels
     # acdc_data[0] = torch.Tensor(acdc_data[0])# convert to tensors
     # acdc_data[1] = torch.Tensor(acdc_data[1])# convert to tensors
-    acdc_data = ACDCTrainDataset(acdc_data[0], acdc_data[1])
-    train_dataloader = DataLoader(acdc_data, batch_size=args.batch_size)
+    acdc_data = ACDCTrainDataset(acdc_data[0], acdc_data[1],args)
+    train_dataloader = DataLoader(acdc_data, batch_size=args.batch_size,num_workers=args.workers)
     # validation
-    acdc_data, _, _ = get_acdc('ACDC/testing')
+    acdc_data, _, _ = get_acdc('ACDC/testing', input_size=(args.img_size,args.img_size,1))
     acdc_data[1] = convert_masks(acdc_data[1])
     acdc_data[0] = np.transpose(acdc_data[0], (0, 3, 1, 2)) # for the channels
     acdc_data[1] = np.transpose(acdc_data[1], (0, 3, 1, 2)) # for the channels
     acdc_data[0] = torch.Tensor(acdc_data[0]) # convert to tensors
     acdc_data[1] = torch.Tensor(acdc_data[1]) # convert to tensors
     acdc_data = TensorDataset(acdc_data[0], acdc_data[1])
-    validation_dataloader = DataLoader(acdc_data, batch_size=args.batch_size)
+    validation_dataloader = DataLoader(acdc_data, batch_size=args.batch_size,num_workers=args.workers)
 
     # initialize the loss function
     loss_fn = nn.BCELoss()
@@ -247,7 +247,6 @@ def main():
         model.train()
         # mini batch train
         train_loss_list = []
-        grads_dict = {}
         abs_grads_dict = {}
         train_mean_dice_list = []
         train_LV_dice_list = []
@@ -259,12 +258,12 @@ def main():
 
             pred_y = model(x)
             # dsn
-            down1 = F.interpolate(y,112)
-            down2 = F.interpolate(y,56)
+            down1 = F.interpolate(y,args.img_size // 2)
+            down2 = F.interpolate(y,args.img_size // 4)
             loss = (loss_fn(pred_y[2],y) * 0.57 + loss_fn(pred_y[1],down1) * 0.29 + loss_fn(pred_y[0],down2) * 0.14)
-            loss *= 1e4 # scale grad
-            with torch.no_grad():
-                loss /= 1e4
+            # loss *= 1e4 # scale grad
+            # with torch.no_grad():
+            #     loss /= 1e4
             
             train_loss_list.append(loss)
             optimizer.zero_grad()
@@ -282,11 +281,9 @@ def main():
             train_mean_dice_list.append(dice[1:].mean())
             # save grad
             for name, params in model.named_parameters():
-                if name not in grads_dict:
-                    grads_dict[name] = []
+                if name not in abs_grads_dict:
                     abs_grads_dict[name] = []
                 if params.grad is not None:
-                    grads_dict[name].append(params.grad.mean())
                     abs_grads_dict[name].append(params.grad.abs().mean())
                     tb_writer.add_scalar(f'batch_abs_{name}',params.grad.abs().mean(), train_step)
             train_step += 1
@@ -312,8 +309,8 @@ def main():
                 y = y.to(device)
                 pred_y = model(x)
 
-                down1 = F.interpolate(y,112)
-                down2 = F.interpolate(y,56)
+                down1 = F.interpolate(y,args.img_size // 2)
+                down2 = F.interpolate(y,args.img_size // 4)
                 loss = loss_fn(pred_y[2],y) * 0.57 + loss_fn(pred_y[1],down1) * 0.29 + loss_fn(pred_y[0],down2) * 0.14
                 validate_loss_list.append(loss)
 
@@ -353,9 +350,8 @@ def main():
         tb_writer.add_scalar('dice/train_MYO_dice',train_MYO_dice, epoch)
 
         tb_writer.add_scalar(f'lr/{epoch // 100}', optimizer.param_groups[0]["lr"], epoch)
-        for name in grads_dict:
+        for name in abs_grads_dict:
             # 分段看
-            tb_writer.add_scalar(f'{name}/{epoch // 100}',torch.tensor(grads_dict[name]).mean(), epoch)
             tb_writer.add_scalar(f'abs_{name}/{epoch // 100}',torch.tensor(abs_grads_dict[name]).mean(), epoch)
         # log
         logger.info('-' * 35)

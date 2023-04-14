@@ -5,10 +5,10 @@ import random
 import PIL.Image
 import cv2
 from torch.utils.data import Dataset
-from .data_utils import convert_mask_single
+from .data_utils import convert_mask_single,visualize
 
 class ACDCTrainDataset(Dataset):
-    def __init__(self,x,y) -> None:
+    def __init__(self,x,y,args) -> None:
         super().__init__()
         self.x = x
         self.y = y
@@ -17,6 +17,7 @@ class ACDCTrainDataset(Dataset):
             transforms.RandomHorizontalFlip(),
             transforms.RandomAffine(degrees=20,translate=(0.2,0.2))
         ])
+        self.img_size = args.img_size
     
     def __len__(self):
         return self.x.shape[0]
@@ -24,13 +25,12 @@ class ACDCTrainDataset(Dataset):
     def __getitem__(self, index):
         seed = np.random.randint(2147483647)
 
-        x = PIL.Image.fromarray(self.x[index].reshape(224,224))
-        y = PIL.Image.fromarray(self.y[index].reshape(224,224))
+        x = PIL.Image.fromarray(self.x[index].reshape(self.img_size, self.img_size))
+        y = PIL.Image.fromarray(self.y[index].reshape(self.img_size, self.img_size))
 
         torch.manual_seed(seed)
         tar_x = np.array(self.transform(x))
         # cv2.imwrite('x.jpg',tar_x)
-        tar_x = tar_x.reshape(1,224,224)
 
         torch.manual_seed(seed)
         tar_y = np.array(self.transform(y))
@@ -41,5 +41,8 @@ class ACDCTrainDataset(Dataset):
         # cv2.imwrite('y_3.jpg',tar_y[3]* 255)
 
 
+        # vis_img = visualize(tar_x,tar_y)
+        # cv2.imwrite('test.jpg',vis_img)
+        tar_x = tar_x.reshape(1,self.img_size,self.img_size)
         torch.manual_seed(0)
         return torch.tensor(tar_x).float(),torch.tensor(tar_y).float()
