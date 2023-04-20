@@ -8,6 +8,7 @@ class Convolutional_Attention(nn.Module):
     def __init__(self,
                  channels,
                  num_heads,
+                 img_size,
                  proj_drop=0.0,
                  kernel_size=3,
                  stride_kv=1,
@@ -23,24 +24,24 @@ class Convolutional_Attention(nn.Module):
         self.proj_drop = proj_drop
         
         self.layer_q = nn.Sequential(
-            nn.Conv2d(channels, channels * num_heads, kernel_size, stride_q, padding_q, bias=False, groups=channels),
+            nn.Conv2d(channels, channels, kernel_size, stride_q, padding_q, bias=attention_bias, groups=channels),
             nn.ReLU(),
         )
-        self.layernorm_q = nn.LayerNorm(channels * num_heads, eps=1e-5)
+        self.layernorm_q = nn.LayerNorm([channels,img_size,img_size], eps=1e-5)
 
         self.layer_k = nn.Sequential(
-            nn.Conv2d(channels, channels * num_heads, kernel_size, stride_kv, padding_kv, bias=False, groups=channels),
+            nn.Conv2d(channels, channels, kernel_size, stride_kv, padding_kv, bias=attention_bias, groups=channels),
             nn.ReLU(),
         )
-        self.layernorm_k = nn.LayerNorm(channels * num_heads, eps=1e-5)
+        self.layernorm_k = nn.LayerNorm([channels,img_size,img_size], eps=1e-5)
 
         self.layer_v = nn.Sequential(
-            nn.Conv2d(channels, channels * num_heads, kernel_size, stride_kv, padding_kv, bias=False, groups=channels),
+            nn.Conv2d(channels, channels, kernel_size, stride_kv, padding_kv, bias=attention_bias, groups=channels),
             nn.ReLU(),
         )
-        self.layernorm_v = nn.LayerNorm(channels * num_heads, eps=1e-5)
+        self.layernorm_v = nn.LayerNorm([channels,img_size,img_size], eps=1e-5)
         
-        self.attention = nn.MultiheadAttention(embed_dim=channels * num_heads, 
+        self.attention = nn.MultiheadAttention(embed_dim=channels, 
                                                bias=attention_bias, 
                                                batch_first=True,
                                                dropout = self.proj_drop,
@@ -52,19 +53,13 @@ class Convolutional_Attention(nn.Module):
         
         if mode == 0:
             x1 = self.layer_q(x)
-            x1 = x1.permute(0, 2, 3, 1)
-            x1 = self.layernorm_q(x1)
-            proj = x1.permute(0, 3, 1, 2)
+            proj = self.layernorm_q(x1)
         elif mode == 1:
             x1 = self.layer_k(x)
-            x1 = x1.permute(0, 2, 3, 1)
-            x1 = self.layernorm_k(x1)
-            proj = x1.permute(0, 3, 1, 2)            
+            proj = self.layernorm_k(x1)           
         elif mode == 2:
             x1 = self.layer_v(x)
-            x1 = x1.permute(0, 2, 3, 1)
-            x1 = self.layernorm_v(x1)
-            proj = x1.permute(0, 3, 1, 2)        
+            proj = self.layernorm_v(x1)     
 
         return proj
 
@@ -96,7 +91,8 @@ class Transformer(nn.Module):
                  # in_channels,
                  out_channels,
                  num_heads,
-                 dpr = 0.0,
+                 dpr,
+                 img_size,
                  proj_drop=0.5,
                  attention_bias=True,
                  padding_q="same",
@@ -107,6 +103,7 @@ class Transformer(nn.Module):
         
         self.attention_output = Convolutional_Attention(channels=out_channels,
                                          num_heads=num_heads,
+                                         img_size=img_size,
                                          proj_drop=proj_drop,
                                          padding_q=padding_q,
                                          padding_kv=padding_kv,
@@ -116,8 +113,8 @@ class Transformer(nn.Module):
                                          )
 
         self.stochastic_depth = StochasticDepth(dpr,mode='batch')
-        self.conv1 = nn.Conv2d(out_channels * num_heads, out_channels, kernel_size=3, stride=1, padding="same")
-        self.layernorm = nn.LayerNorm(self.conv1.out_channels, eps=1e-5)
+        self.conv1 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding="same")
+        self.layernorm = nn.LayerNorm([out_channels, img_size, img_size])
         self.wide_focus = Wide_Focus(out_channels, out_channels)
 
     def forward(self, x):
@@ -125,9 +122,7 @@ class Transformer(nn.Module):
         x1 = self.stochastic_depth(x1)
         x2 = self.conv1(x1) + x
 
-        x3 = x2.permute(0, 2, 3, 1)
-        x3 = self.layernorm(x3)
-        x3 = x3.permute(0, 3, 1, 2)
+        x3 = self.layernorm(x2)
         x3 = self.wide_focus(x3)
         x3 = self.stochastic_depth(x3)
 
@@ -174,9 +169,10 @@ class Wide_Focus(nn.Module):
         return x_out
 
 class Block_decoder(nn.Module):
-    def __init__(self, in_channels, out_channels, att_heads, dpr):
+    def __init__(self, in_channels, out_channels, att_heads, dpr, img_size):
         super().__init__()
-        self.layernorm = nn.LayerNorm(in_channels, eps=1e-5)
+        self.layernorm = nn.LayerNorm([in_channels,img_size,img_size])
+        # img size *= 2
         self.upsample = nn.Upsample(scale_factor=2)
         self.layer1 = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding="same"),
@@ -191,12 +187,10 @@ class Block_decoder(nn.Module):
             nn.ReLU(),
             nn.Dropout(0.3)
         )
-        self.trans = Transformer(out_channels, att_heads, dpr)
+        self.trans = Transformer(out_channels, att_heads, dpr, img_size * 2)
         
     def forward(self, x, skip):
-        x1 = x.permute(0, 2, 3, 1)
-        x1 = self.layernorm(x1)
-        x1 = x1.permute(0, 3, 1, 2)
+        x1 = self.layernorm(x)
         x1 = self.upsample(x1)
         x1 = self.layer1(x1)
         x1 = torch.cat((skip, x1), axis=1)
@@ -206,10 +200,11 @@ class Block_decoder(nn.Module):
         return out
 
 class DS_out(nn.Module):
-    def __init__(self, in_channels, out_channels):
+    def __init__(self, in_channels, out_channels, img_size):
         super().__init__()
+        # img size *= 2
         self.upsample = nn.Upsample(scale_factor=2)
-        self.layernorm = nn.LayerNorm(in_channels, eps=1e-5)
+        self.layernorm = nn.LayerNorm([in_channels,img_size*2,img_size*2], eps=1e-5)
         self.conv1 = nn.Sequential(
             nn.Conv2d(in_channels, in_channels, kernel_size=3, stride=1, padding="same"),
             nn.ReLU()
@@ -225,9 +220,7 @@ class DS_out(nn.Module):
 
     def forward(self, x):
         x1 = self.upsample(x)
-        x1 = x1.permute(0, 2, 3, 1)
         x1 = self.layernorm(x1)
-        x1 = x1.permute(0, 3, 1, 2)
         x1 = self.conv1(x1)
         x1 = self.conv2(x1)
         out = self.conv3(x1)
@@ -235,57 +228,61 @@ class DS_out(nn.Module):
         return out
 
 class Block_encoder_without_skip(nn.Module):
-    def __init__(self, in_channels, out_channels, att_heads, dpr, use_layernorm=True):
+    def __init__(self, in_channels, out_channels, att_heads, dpr, img_size):
         super().__init__()
-        self.use_layernorm = use_layernorm
-        if use_layernorm:
-            self.layernorm = nn.LayerNorm(in_channels,eps=1e-5)
+        """LayerNorm Example
+        >>> # Image Example
+        >>> N, C, H, W = 20, 5, 10, 10
+        >>> input = torch.randn(N, C, H, W)
+        >>> # Normalize over the last three dimensions (i.e. the channel and spatial dimensions)
+        >>> # as shown in the image below
+        >>> layer_norm = nn.LayerNorm([C, H, W])
+        >>> output = layer_norm(input)
+        """
+        self.layernorm = nn.LayerNorm([in_channels,img_size,img_size])
         self.layer1 = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding="same"),
             nn.ReLU()
         )
+        # img_size => img_size // 2
         self.layer2 = nn.Sequential(
             nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding="same"),
             nn.ReLU(),
             nn.Dropout(0.3),
             nn.MaxPool2d((2,2))
         )
-        self.trans = Transformer(out_channels, att_heads, dpr)
+        self.trans = Transformer(out_channels, att_heads, dpr, img_size // 2)
 
     def forward(self, x):
-        if self.use_layernorm:
-            x = x.permute(0, 2, 3, 1)
-            x = self.layernorm(x)
-            x = x.permute(0, 3, 1, 2)
+        x = self.layernorm(x)
         x1 = self.layer1(x)
         x1 = self.layer2(x1)
         x1 = self.trans(x1)
         return x1
 
 class Block_encoder_with_skip(nn.Module):
-    def __init__(self, in_channels, out_channels, att_heads, dpr):
+    def __init__(self, in_channels, out_channels, att_heads, dpr,img_size):
         super().__init__()
-        self.layernorm = nn.LayerNorm(in_channels, eps=1e-5)
+        self.layernorm = nn.LayerNorm([in_channels,img_size,img_size])
         self.layer1 = nn.Sequential(
             nn.Conv2d(1, in_channels, kernel_size=3, stride=1, padding="same"),
             nn.ReLU()
         )
         self.layer2 = nn.Sequential(
-            nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding="same"),
+            nn.Conv2d(in_channels * 2, out_channels, kernel_size=3, stride=1, padding="same"),
             nn.ReLU()
         )
+        # image size /= 2
         self.layer3 = nn.Sequential(
             nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding="same"),
             nn.ReLU(),
             nn.Dropout(0.3),
             nn.MaxPool2d((2,2))
         )
-        self.trans = Transformer(out_channels, att_heads, dpr)
+        self.trans = Transformer(out_channels, att_heads, dpr, img_size // 2)
     
-    def forward(self, x, scale_img="none"):
-        x1 = x.permute(0, 2, 3, 1)
-        x1 = self.layernorm(x1)
-        x1 = x1.permute(0, 3, 1, 2)
+    def forward(self, x, scale_img):
+        x1 = self.layernorm(x)
         x1 = torch.cat((self.layer1(scale_img), x1), axis=1)
         x1 = self.layer2(x1)
         x1 = self.layer3(x1)
@@ -311,24 +308,26 @@ class FCT(nn.Module):
         dpr = [x for x in np.linspace(0, stochastic_depth_rate, blocks)]
 
         self.drp_out = 0.3
+        self.img_size = args.img_size
 
         # Multi-scale input
         self.scale_img = nn.AvgPool2d(2,2)   
 
         # model
-        self.block_1 = Block_encoder_without_skip(1, filters[0], att_heads[0], dpr[0],False)
-        self.block_2 = Block_encoder_with_skip(filters[0], filters[1], att_heads[1], dpr[1])
-        self.block_3 = Block_encoder_with_skip(filters[1], filters[2], att_heads[2], dpr[2])
-        self.block_4 = Block_encoder_with_skip(filters[2], filters[3], att_heads[3], dpr[3])
-        self.block_5 = Block_encoder_without_skip(filters[3], filters[4], att_heads[4], dpr[4])
-        self.block_6 = Block_decoder(filters[4], filters[5], att_heads[5], dpr[5])
-        self.block_7 = Block_decoder(filters[5], filters[6], att_heads[6], dpr[6])
-        self.block_8 = Block_decoder(filters[6], filters[7], att_heads[7], dpr[7])
-        self.block_9 = Block_decoder(filters[7], filters[8], att_heads[8], dpr[8])
+        # [N,1,img_size,img_size] => [N,filters[0],img_size // 2,img_size // 2]
+        self.block_1 = Block_encoder_without_skip(1, filters[0], att_heads[0], dpr[0], self.img_size)
+        self.block_2 = Block_encoder_with_skip(filters[0], filters[1], att_heads[1], dpr[1], self.img_size // 2)
+        self.block_3 = Block_encoder_with_skip(filters[1], filters[2], att_heads[2], dpr[2], self.img_size // 4)
+        self.block_4 = Block_encoder_with_skip(filters[2], filters[3], att_heads[3], dpr[3], self.img_size // 8)
+        self.block_5 = Block_encoder_without_skip(filters[3], filters[4], att_heads[4], dpr[4], self.img_size // 16)
+        self.block_6 = Block_decoder(filters[4], filters[5], att_heads[5], dpr[5], self.img_size // 32)
+        self.block_7 = Block_decoder(filters[5], filters[6], att_heads[6], dpr[6], self.img_size // 16)
+        self.block_8 = Block_decoder(filters[6], filters[7], att_heads[7], dpr[7], self.img_size // 8)
+        self.block_9 = Block_decoder(filters[7], filters[8], att_heads[8], dpr[8], self.img_size // 4)
 
-        self.ds7 = DS_out(filters[6], 4)
-        self.ds8 = DS_out(filters[7], 4)
-        self.ds9 = DS_out(filters[8], 4)
+        self.ds7 = DS_out(filters[6], 4, self.img_size // 8)
+        self.ds8 = DS_out(filters[7], 4, self.img_size // 4)
+        self.ds9 = DS_out(filters[8], 4, self.img_size // 2)
         
     def forward(self,x):
 
