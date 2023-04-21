@@ -77,7 +77,7 @@ def main():
             # load weights,old hyper parameter and optimizer state 
             model = FCT.load_from_checkpoint('this is path')
     
-    precision = '16m-mixed' if args.amp else 32
+    precision = '16-mixed' if args.amp else 32
 
     trainer = L.Trainer(precision=precision,max_epochs=args.max_epoch)
     trainer.fit(model=model,train_dataloaders=train_dataloader,val_dataloaders=validation_dataloader)

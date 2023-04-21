@@ -222,7 +222,6 @@ class DS_out(nn.Module):
         )
         self.conv3 = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1, padding="same"),
-            nn.Sigmoid()
         )
 
     def forward(self, x):
@@ -305,7 +304,7 @@ class FCT(L.LightningModule):
 
         self.drp_out = 0.3
         self.img_size = args.img_size
-        self.loss_fn = nn.BCELoss()
+        self.loss_fn = nn.BCEWithLogitsLoss()
         self.args = args
 
         # attention heads and filters per block
