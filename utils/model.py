@@ -397,10 +397,10 @@ class FCT(L.LightningModule):
         dice_LV = dice[3]
         dice_RV = dice[1]
         dice_MYO = dice[2]
-        self.log('dice/train_all_dice', dice[1:].mean())
-        self.log('dice/train_dice_LV', dice_LV)
-        self.log('dice/train_dice_RV', dice_RV)
-        self.log('dice/train_dice_MYO', dice_MYO)
+        self.log('dice/all_train_dice', dice[1:].mean())
+        self.log('dice/train_LV_dice', dice_LV)
+        self.log('dice/train_RV_dice', dice_RV)
+        self.log('dice/train_MYO_dice', dice_MYO)
         # save grad
         # for name, params in model.named_parameters():
         #     if name not in abs_grads_dict:
@@ -426,10 +426,10 @@ class FCT(L.LightningModule):
         dice_LV = dice[3]
         dice_RV = dice[1]
         dice_MYO = dice[2]
-        self.log('dice/validation_all_dice', dice[1:].mean())
-        self.log('dice/validation_dice_LV', dice_LV)
-        self.log('dice/validation_dice_RV', dice_RV)
-        self.log('dice/validation_dice_MYO', dice_MYO)
+        self.log('dice/all_validate_dice', dice[1:].mean())
+        self.log('dice/LV_dice', dice_LV)
+        self.log('dice/RV_dice', dice_RV)
+        self.log('dice/MYO_dice', dice_MYO)
         return loss
 
     def configure_optimizers(self):
