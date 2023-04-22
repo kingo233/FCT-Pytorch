@@ -7,6 +7,7 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader,TensorDataset
 from datetime import datetime
+from lightning.pytorch.callbacks.lr_monitor import LearningRateMonitor
 # from google.colab import drive
 
 from torch.utils.tensorboard import SummaryWriter
@@ -72,14 +73,15 @@ def main():
     # TODO need debug
     if args.resume:
         if args.new_param:
-            model = FCT.load_from_checkpoint('this is path',args=args)
+            model = FCT.load_from_checkpoint('lightning_logs/version_2/checkpoints/epoch=74-step=4500.ckpt',args=args)
         else:
             # load weights,old hyper parameter and optimizer state 
             model = FCT.load_from_checkpoint('this is path')
     
     precision = '16-mixed' if args.amp else 32
+    lr_monitor = LearningRateMonitor(logging_interval='epoch')
 
-    trainer = L.Trainer(precision=precision,max_epochs=args.max_epoch)
+    trainer = L.Trainer(precision=precision,max_epochs=args.max_epoch,callbacks=[lr_monitor])
     trainer.fit(model=model,train_dataloaders=train_dataloader,val_dataloaders=validation_dataloader)
 
 

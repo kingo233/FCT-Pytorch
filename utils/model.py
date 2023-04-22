@@ -28,18 +28,21 @@ class Convolutional_Attention(nn.Module):
         self.layer_q = nn.Sequential(
             nn.Conv2d(channels, channels, kernel_size, stride_q, padding_q, bias=attention_bias, groups=channels),
             nn.ReLU(),
+            nn.Dropout(0.3)
         )
         self.layernorm_q = nn.LayerNorm([channels,img_size,img_size], eps=1e-5)
 
         self.layer_k = nn.Sequential(
             nn.Conv2d(channels, channels, kernel_size, stride_kv, padding_kv, bias=attention_bias, groups=channels),
             nn.ReLU(),
+            nn.Dropout(0.3)
         )
         self.layernorm_k = nn.LayerNorm([channels,img_size,img_size], eps=1e-5)
 
         self.layer_v = nn.Sequential(
             nn.Conv2d(channels, channels, kernel_size, stride_kv, padding_kv, bias=attention_bias, groups=channels),
             nn.ReLU(),
+            nn.Dropout(0.3)
         )
         self.layernorm_v = nn.LayerNorm([channels,img_size,img_size], eps=1e-5)
         
@@ -147,22 +150,22 @@ class Wide_Focus(nn.Module):
         self.layer1 = nn.Sequential(
             nn.Conv2d(in_channels,out_channels, kernel_size=3, stride=1, padding="same"),
             nn.GELU(),
-            nn.Dropout(0.1)
+            nn.Dropout(0.3)
         )
         self.layer_dilation2 = nn.Sequential(
             nn.Conv2d(in_channels,out_channels, kernel_size=3, stride=1, padding="same", dilation=2),
             nn.GELU(),
-            nn.Dropout(0.1)
+            nn.Dropout(0.3)
         )
         self.layer_dilation3 = nn.Sequential(
             nn.Conv2d(in_channels,out_channels, kernel_size=3, stride=1, padding="same", dilation=3),
             nn.GELU(),
-            nn.Dropout(0.1)
+            nn.Dropout(0.3)
         )
         self.layer4 = nn.Sequential(
             nn.Conv2d(in_channels,out_channels, kernel_size=3, stride=1, padding="same"),
             nn.GELU(),
-            nn.Dropout(0.1)
+            nn.Dropout(0.3)
         )
 
     def forward(self, x):
@@ -388,7 +391,7 @@ class FCT(L.LightningModule):
         down1 = F.interpolate(y, self.img_size // 2)
         down2 = F.interpolate(y, self.img_size // 4)
         loss = (self.loss_fn(pred_y[2], y) * 0.57 + self.loss_fn(pred_y[1], down1) * 0.29 + self.loss_fn(pred_y[0], down2) * 0.14)
-        self.log("loss/train_loss", loss)
+        self.log("loss/train_loss", loss,on_epoch=True)
 
         # train dice
         y_pred = torch.argmax(pred_y[2], axis=1)
@@ -397,17 +400,14 @@ class FCT(L.LightningModule):
         dice_LV = dice[3]
         dice_RV = dice[1]
         dice_MYO = dice[2]
-        self.log('dice/all_train_dice', dice[1:].mean())
-        self.log('dice/train_LV_dice', dice_LV)
-        self.log('dice/train_RV_dice', dice_RV)
-        self.log('dice/train_MYO_dice', dice_MYO)
+        self.log('dice/all_train_dice', dice[1:].mean(), on_epoch=True)
+        self.log('dice/train_LV_dice', dice_LV, on_epoch=True)
+        self.log('dice/train_RV_dice', dice_RV, on_epoch=True)
+        self.log('dice/train_MYO_dice', dice_MYO, on_epoch=True)
         # save grad
-        # for name, params in model.named_parameters():
-        #     if name not in abs_grads_dict:
-        #         abs_grads_dict[name] = []
-        #     if params.grad is not None:
-        #         abs_grads_dict[name].append(params.grad.abs().mean())
-        #         tb_writer.add_scalar(f'batch_abs_{name}',params.grad.abs().mean(), train_step)
+        for name, params in self.named_parameters():
+            if params.grad is not None:
+                self.log(f'abs_{name}',params.grad.abs().mean(), on_epoch=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -417,7 +417,7 @@ class FCT(L.LightningModule):
         down1 = F.interpolate(y, self.img_size // 2)
         down2 = F.interpolate(y, self.img_size // 4)
         loss = (self.loss_fn(pred_y[2], y) * 0.57 + self.loss_fn(pred_y[1], down1) * 0.29 + self.loss_fn(pred_y[0], down2) * 0.14)
-        self.log("loss/validation_loss", loss)
+        self.log("loss/validation_loss", loss,on_epoch=True)
 
         # train dice
         y_pred = torch.argmax(pred_y[2], axis=1)
@@ -426,19 +426,26 @@ class FCT(L.LightningModule):
         dice_LV = dice[3]
         dice_RV = dice[1]
         dice_MYO = dice[2]
-        self.log('dice/all_validate_dice', dice[1:].mean())
-        self.log('dice/LV_dice', dice_LV)
-        self.log('dice/RV_dice', dice_RV)
-        self.log('dice/MYO_dice', dice_MYO)
+        self.log('dice/all_validate_dice', dice[1:].mean(), on_epoch=True)
+        self.log('dice/LV_dice', dice_LV, on_epoch=True)
+        self.log('dice/RV_dice', dice_RV, on_epoch=True)
+        self.log('dice/MYO_dice', dice_MYO, on_epoch=True)
         return loss
 
     def configure_optimizers(self):
-        # , weight_decay=self.args.decay)
         optimizer = torch.optim.Adam(self.parameters(), lr=self.args.lr)
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, mode='min', factor=self.args.lr_factor, min_lr=self.args.min_lr)
-        return optimizer
+        return {
+            "optimizer":    optimizer,
+            "lr_scheduler": {
+                "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(
+                                optimizer, mode='min', factor=self.args.lr_factor, min_lr=self.args.min_lr,patience=5),
+                "monitor": "loss/train_loss",
+                "name": "lr"
+            }
+        }
+    
 
+    @torch.no_grad()
     def compute_dice(self, pred_y, y):
         """
         Computes the Dice coefficient for each class in the ACDC dataset.
