@@ -28,21 +28,18 @@ class Convolutional_Attention(nn.Module):
         self.layer_q = nn.Sequential(
             nn.Conv2d(channels, channels, kernel_size, stride_q, padding_q, bias=attention_bias, groups=channels),
             nn.ReLU(),
-            nn.Dropout(0.3)
         )
         self.layernorm_q = nn.LayerNorm([channels,img_size,img_size], eps=1e-5)
 
         self.layer_k = nn.Sequential(
             nn.Conv2d(channels, channels, kernel_size, stride_kv, padding_kv, bias=attention_bias, groups=channels),
             nn.ReLU(),
-            nn.Dropout(0.3)
         )
         self.layernorm_k = nn.LayerNorm([channels,img_size,img_size], eps=1e-5)
 
         self.layer_v = nn.Sequential(
             nn.Conv2d(channels, channels, kernel_size, stride_kv, padding_kv, bias=attention_bias, groups=channels),
             nn.ReLU(),
-            nn.Dropout(0.3)
         )
         self.layernorm_v = nn.LayerNorm([channels,img_size,img_size], eps=1e-5)
         
@@ -182,7 +179,7 @@ class Block_decoder(nn.Module):
         super().__init__()
         self.layernorm = nn.LayerNorm([in_channels, img_size, img_size])
         # img size *= 2
-        self.upsample = nn.Upsample(scale_factor=2)
+        self.upsample = nn.Upsample(scale_factor=2,mode='bilinear')
         self.layer1 = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding="same"),
             nn.ReLU()
