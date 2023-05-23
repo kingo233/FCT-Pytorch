@@ -7,7 +7,6 @@ This repo can:
 
 2. Get about 90 dice on official test set if your train on the whole train set.
 
-3. Get about 93.26 dice if you use ACDC train set and split them into train,validation,test(branch big_kernel_wide_fucos)
 
 ## training
 1. Get ACDC dataset.And remember to delete `.md` file in your ACDC dataset folder
